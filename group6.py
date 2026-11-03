@@ -6,4 +6,7 @@ greet("Group 6")
 print("hello,everyone!")
 print("Git test successful!")
 
+#test3
+print("GitHub test is working")
+
 
