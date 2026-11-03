@@ -3,3 +3,4 @@ def greet(name):
 greet("Group 6")
 
 #test2
+print("hello,everyone!")
