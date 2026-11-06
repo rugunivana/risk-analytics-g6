@@ -82,7 +82,7 @@ def run_q3():
     print("Valid monthly changes:", valid_count)
     print("Missing monthly changes:", missing_count)
 
-    #get the region names
+    #Get the region names
     region_names = []
 
     for row in valid_data:
@@ -128,7 +128,7 @@ def run_q3():
         if result[0] not in countries:
             local_region_results.append(result)
 
-    #show the regions with the highest volatility
+    #Show regions with the highest volatility
     print()
     local_region_results.sort(key=lambda x: x[2], reverse=True)
 
@@ -137,7 +137,7 @@ def run_q3():
     for i in range(min(5, len(local_region_results))):
         print(local_region_results[i])
 
-    #show the regions with the lowest volatility
+    #Show regions with the lowest volatility
     local_region_results.sort(key=lambda x: x[2])
 
     print()
