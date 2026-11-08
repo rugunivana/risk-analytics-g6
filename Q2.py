@@ -1,5 +1,32 @@
 import numpy as np
 
+def choose_region(prompt, region_names):
+    while True:
+        search = input(prompt).strip().lower()
+
+        if search == "":
+            print("Please enter a region name.")
+            continue
+
+        matches = []
+
+        for name in region_names:
+            if search == name.lower():
+                return name
+
+            if search in name.lower():
+                matches.append(name)
+
+        if len(matches) == 1:
+            print("Matched region:", matches[0])
+            return matches[0]
+
+        if len(matches) > 1:
+            print("Multiple regions match. Please enter a more specific name:")
+            for name in matches:
+                print("-", name)
+        else:
+            print("No matching region found. Please try again.")
 
 def run_q2():
     file_path = "uk_house_index_data_aug2026.csv"
@@ -37,8 +64,9 @@ def run_q2():
     )
 
     # Get the user's choices
-    region_1 = input("Enter the first region: ").strip()
-    region_2 = input("Enter the second region: ").strip()
+    region_names = np.unique(data[:, 1])
+    region_1 = choose_region("Enter the first region: ", region_names)
+    region_2 = choose_region("Enter the second region: ", region_names)
 
     start_text = input("Enter the start year: ").strip()
     end_text = input("Enter the end year: ").strip()
