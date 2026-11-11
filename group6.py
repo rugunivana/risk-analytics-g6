@@ -43,17 +43,17 @@ columns = np.genfromtxt(
     )
 # print(columns)
 
-# add a column called = 'Month' to the existing data; create a new array (hpi_new),.
-new_columns_list = hpi.dtype.descr + [("Month", "datetime64[M]")]
+# add a column called = 'Year-Month' to the existing data; create a new array (hpi_new),.
+new_columns_list = hpi.dtype.descr + [("Year-Month", "datetime64[M]")]
 hpi_new = np.empty(hpi.shape, dtype = new_columns_list)
 
 # copy all original columns
 for col in hpi.dtype.names:
     hpi_new[col] = hpi[col]
 
-# convert Date into Month
+# convert Date into Year-Month
 for i, d in enumerate(hpi["Date"]):
-    hpi_new["Month"][i] = np.datetime64(
+    hpi_new["Year-Month"][i] = np.datetime64(
         f"{d[6:10]}-{d[3:5]}", "M"
     )
 
@@ -64,7 +64,7 @@ hpi = hpi_new
 # print(hpi[:5])
 
 # since data Norther Ireland only starts tracking from January 2005, we will filter the data to only include data from January 2005 onwards
-hpi = hpi[hpi["Month"] >= np.datetime64("2005-01")]
+hpi = hpi[hpi["Year-Month"] >= np.datetime64("2005-01")]
 
 '''
 The UK House Price Index (UK HPI) captures changes in the value of residential properties.
@@ -78,8 +78,7 @@ Data is available at a national and regional level, as well as counties, local a
 # -------------------------
 # Interest Rate Data - Combined the rate2y and rate5y of LTV 75% into one array
 # -------------------------
-
-## rate2y
+# --- rate2y ---    
 rate2y75ltv = np.genfromtxt(
     fname = path_rate2y75ltv,
     delimiter = ",",
@@ -97,7 +96,7 @@ there are two things we need to do to clean the data:
 2. change the date format into yyyy-mm-dd format
 '''
 
-# 1. convert the rate to float
+# step 1. convert the rate to float
 def convert_to_float(data, column):
     for i, d in enumerate(data[column]):
         data[column][i] = float(d)
@@ -105,11 +104,48 @@ def convert_to_float(data, column):
 
 rate2y75ltv = convert_to_float(rate2y75ltv, "Rate2y")
 
-# 2. change the date into yyyy-mm-dd format
+# step 2. change the date into yyyy-mm-dd format
 
 
+month = {
+    "Jan": "01",
+    "Feb": "02",
+    "Mar": "03",
+    "Apr": "04",
+    "May": "05",
+    "Jun": "06",
+    "Jul": "07",
+    "Aug": "08",
+    "Sep": "09",
+    "Oct": "10",
+    "Nov": "11",
+    "Dec": "12"
+}
 
-## rate5y
+
+formatted_dates = []
+for d in rate2y75ltv['Date']:
+    day = d.split(" ")[0]
+    mon = month[d.split(" ")[1]]
+    year = d.split(" ")[2]
+
+    formatted_date = f"{year}-{mon}-{day.zfill(2)}"
+    formatted_dates.append(formatted_date)
+
+formatted_dates = np.array(formatted_dates, dtype="datetime64[D]")
+
+rate2y_new_dtype = [
+    ("Date", "datetime64[D]"),
+    ("Rate2y", "f8")
+]
+
+rate2y75ltv_new = np.empty(rate2y75ltv.shape, dtype=rate2y_new_dtype)
+rate2y75ltv_new["Date"] = formatted_dates
+rate2y75ltv_new["Rate2y"] = rate2y75ltv["Rate2y"]
+rate2y75ltv = rate2y75ltv_new
+
+# --- rate5y ---
+
 rate5y75ltv = np.genfromtxt(
     fname = path_rate5y75ltv,
     delimiter = ",",
@@ -126,16 +162,82 @@ There are two things we need to do to clean the data:
 2. change the date format into 20yy-mm-dd format
 '''
 
-# 1. remove the " from the rate5y datasets & convert the rate to float
+# step 1. remove the " from the rate5y datasets & convert the rate to float
 for col in rate5y75ltv.dtype.names:
     for i, d in enumerate(rate5y75ltv[col]):
         rate5y75ltv[col][i] = d.strip('"')
 
 rate5y75ltv = convert_to_float(rate5y75ltv, "Rate5y")
 
-# 2. change the date format into 20yy-mm-dd format
+# step 2. change the date format into 20yy-mm-dd format
 
 
+#print(rate5y75ltv[:5])
+#[('31 Oct 26', '5.19') ('30 Sep 26', '4.98') ('31 Aug 26', '4.78') ('31 Jul 26', '4.58') ('30 Jun 26', '4.62')]
+formatted_dates_5y = []
+for d in rate5y75ltv['Date']:
+    day = d.split(" ")[0]
+    mon = month[d.split(" ")[1]]
+    year = d.split(" ")[2]
+
+    formatted_date = f"20{year}-{mon}-{day.zfill(2)}"
+    formatted_dates_5y.append(formatted_date)
+
+formatted_dates_5y = np.array(formatted_dates_5y, dtype="datetime64[D]")
+
+rate5y_new_dtype = [
+    ("Date", "datetime64[D]"),
+    ("Rate5y", "f8")
+]
+
+rate5y75ltv_new = np.empty(rate5y75ltv.shape, dtype=rate5y_new_dtype)
+rate5y75ltv_new["Date"] = formatted_dates_5y
+rate5y75ltv_new["Rate5y"] = rate5y75ltv["Rate5y"]
+rate5y75ltv = rate5y75ltv_new
+
+# --- combining both rates ---
+
+common_dates, idx_rate2y, idx_rate5y = np.intersect1d(
+    rate2y75ltv["Date"], rate5y75ltv["Date"], return_indices = True
+)
+
+rates = np.empty(
+    common_dates.shape[0],
+    dtype=[
+        ("Date", "datetime64[D]"),
+        ("Rate2y", "f8"),
+        ("Rate5y", "f8"),
+        ("Year-Month", "datetime64[M]")
+    ]
+)
+
+# Assign the values
+rates["Date"] = common_dates
+rates["Rate2y"] = rate2y75ltv["Rate2y"][idx_rate2y]
+rates["Rate5y"] = rate5y75ltv["Rate5y"][idx_rate5y]
+rates["Year-Month"] = rates["Date"].astype("datetime64[M]")
+
+
+# --- overview ---
+'''
+print("> overview rates")
+print("Rows         :", rates.shape[0])
+print("Date range   :", rates["Date"].min(), "to", rates["Date"].max())
+
+print("> data")
+print(rates[:5])
+
+> overview rates
+Rows         : 260
+Date range   : 2005-01-31 to 2026-08-31
+> data
+[('2005-01-31', 4.99, 5.2 , '2005-01')
+ ('2005-02-28', 5.07, 5.25, '2005-02')
+ ('2005-03-31', 5.2 , 5.28, '2005-03')
+ ('2005-04-30', 5.16, 5.23, '2005-04')
+ ('2005-05-31', 4.91, 5.05, '2005-05')]
+
+'''
 
 
 # ============================================================
