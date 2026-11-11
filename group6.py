@@ -244,11 +244,65 @@ Date range   : 2005-01-31 to 2026-08-31
 # Function and Definition
 # ============================================================
 # ============================================================
-# RQ1
+# Commonly used functions..
 # ============================================================
 
-# Start here
 
+def ask_option(question, options):
+    print(question)
+
+
+# ============================================================
+# RQ1: Are higher mortgage interest rates associated with lower annual house price growth?
+# ============================================================
+
+def run_q1():
+
+    # Choose Region
+    countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
+    print("Choose the region you want to analyze:")
+    for i, country in enumerate(countries, start = 1):
+        print(f"{i}. {country}")
+    while True:
+        country_answer = input("Choose a number: ")
+        if country_answer.isdigit() and 1 <= int(country_answer) <= len(countries):
+            selected_country = countries[int(country_answer)-1]
+            break
+        print("Invalid choice, try again.")
+
+    # Choose Mortgage Rate (2y or 5y) to analyze.
+    rates = ["rate2y", "rate5y"]
+    print("Choose the term rate of the mortgage:")
+    for i, rate in enumerate(rates, start = 1):
+        print(f"{i}. {rate}")
+    while True: 
+        rate_answer = input("Choose a number:")
+        if rate_answer.isdigit() and 1 <= int(rate_answer) <= len(rates):
+            selected_rate = rates[int(rate_answer)-1]
+            break
+        print("Invalid choice, try again.")
+
+    # Ask Start-Month
+    
+    while True:
+        start_month_answer = input("Determine start month (YYYY-MM) >= January 2005: ").strip()
+        if(
+            len(start_month_answer) == 7
+            and start_month_answer[4] == "-"
+            and start_month_answer[:4].isdigit()
+            and start_month_answer[5:].isdigit()
+            and int(start_month_answer[:4]) >= 2005
+        ):
+            try:
+                selected_start_month = np.datetime64(start_month_answer, "M")
+            except ValueError:
+                pass
+
+        print("Use the format YYYY-MM, e.g. 2015-01.")
+    
+
+
+    
 
 # ============================================================
 # RQ2
