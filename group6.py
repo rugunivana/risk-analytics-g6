@@ -66,6 +66,10 @@ hpi = hpi_new
 # since data Norther Ireland only starts tracking from January 2005, we will filter the data to only include data from January 2005 onwards
 hpi = hpi[hpi["Year-Month"] >= np.datetime64("2005-01")]
 
+hpi_months = np.array(
+    [f"{d[6:10]}-{d[3:5]}" for d in hpi["Date"]],
+    dtype = "datetime64[M]"
+)
 '''
 The UK House Price Index (UK HPI) captures changes in the value of residential properties.
 The UK HPI uses sales data collected on residential housing transactions, whether for cash or with a mortgage. Properties have been included:
@@ -217,27 +221,29 @@ rates["Rate2y"] = rate2y75ltv["Rate2y"][idx_rate2y]
 rates["Rate5y"] = rate5y75ltv["Rate5y"][idx_rate5y]
 rates["Year-Month"] = rates["Date"].astype("datetime64[M]")
 
+rate_months = rates["Date"].astype("datetime64[M]")
+
 
 # --- overview ---
-'''
-print("> overview rates")
-print("Rows         :", rates.shape[0])
-print("Date range   :", rates["Date"].min(), "to", rates["Date"].max())
+#
+#print("> overview rates")
+#print("Rows         :", rates.shape[0])
+#print("Date range   :", rates["Date"].min(), "to", rates["Date"].max())
 
-print("> data")
-print(rates[:5])
+#print("> data")
+#print(rates[:5])
 
-> overview rates
-Rows         : 260
-Date range   : 2005-01-31 to 2026-08-31
-> data
-[('2005-01-31', 4.99, 5.2 , '2005-01')
- ('2005-02-28', 5.07, 5.25, '2005-02')
- ('2005-03-31', 5.2 , 5.28, '2005-03')
- ('2005-04-30', 5.16, 5.23, '2005-04')
- ('2005-05-31', 4.91, 5.05, '2005-05')]
+#> overview rates
+#Rows         : 260
+#Date range   : 2005-01-31 to 2026-08-31
+#> data
+#[('2005-01-31', 4.99, 5.2 , '2005-01')
+# ('2005-02-28', 5.07, 5.25, '2005-02')
+# ('2005-03-31', 5.2 , 5.28, '2005-03')
+# ('2005-04-30', 5.16, 5.23, '2005-04')
+# ('2005-05-31', 4.91, 5.05, '2005-05')]
 
-'''
+
 
 
 # ============================================================
@@ -247,59 +253,100 @@ Date range   : 2005-01-31 to 2026-08-31
 # Commonly used functions..
 # ============================================================
 
-
-def ask_option(question, options):
+def ask_option(question, choices):
     print(question)
+    for i, choice in enumerate(choices, start = 1):
+        print(f"  {i}.  {choice}")
+    while True:
+        answer = input("Input your choice: ").strip()
+        if answer.isdigit() and 1 <= int(answer) <= len(choices):
+            return choices[int(answer) - 1]
+        print("Invalid choice, please try again...")
 
+def ask_year_month(question):
+    while True:
+        answer_year_month = input(question).strip()
+        if(
+            len(answer_year_month) == 7
+            and answer_year_month[4] == "-"
+            and answer_year_month[:4].isdigit()
+            and answer_year_month[5:].isdigit()
+            and int(answer_year_month[:4]) >= 2005
+            and 1 <= int(answer_year_month[5:]) <= 12
+        ):
+            try:
+                return np.datetime64(answer_year_month, "M")
+                break
+            except ValueError:
+                print("Use the format YYYY-MM, e.g. 2015-01.")
 
+def build_series(country, rate_name, start, end):
+    in_country = hpi["RegionName"] == country
+    months = hpi_months[in_country]
+    growth = hpi["12mChange"][in_country]
+
+    # Match house price growth and mortgage rate on the month
+    common, idx_hpi, idx_rate = np.intersect1d(
+        months, rate_months, return_indices = True
+    )
+    growth = growth[idx_hpi]
+    rate = rates[rate_name][idx_rate]
+
+    # Keep the chosen period and drop missing values
+    keep = (
+        (common >= start) & (common <= end)
+        & ~np.isnan(growth) & ~np.isnan(rate)
+    )
+    return common[keep], growth[keep], rate[keep]
+
+    
 # ============================================================
 # RQ1: Are higher mortgage interest rates associated with lower annual house price growth?
 # ============================================================
+
 
 def run_q1():
 
     # Choose Region
     countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
-    print("Choose the region you want to analyze:")
-    for i, country in enumerate(countries, start = 1):
-        print(f"{i}. {country}")
-    while True:
-        country_answer = input("Choose a number: ")
-        if country_answer.isdigit() and 1 <= int(country_answer) <= len(countries):
-            selected_country = countries[int(country_answer)-1]
-            break
-        print("Invalid choice, try again.")
+    country_answer = ask_option("Choose the region you want to analyse:", countries)
 
     # Choose Mortgage Rate (2y or 5y) to analyze.
     rates = ["rate2y", "rate5y"]
-    print("Choose the term rate of the mortgage:")
-    for i, rate in enumerate(rates, start = 1):
-        print(f"{i}. {rate}")
-    while True: 
-        rate_answer = input("Choose a number:")
-        if rate_answer.isdigit() and 1 <= int(rate_answer) <= len(rates):
-            selected_rate = rates[int(rate_answer)-1]
-            break
-        print("Invalid choice, try again.")
+    rate_answer = ask_option("Choose term of the mortgage rate:", ["Rate2y", "Rate5y"])
 
     # Ask Start-Month
-    
-    while True:
-        start_month_answer = input("Determine start month (YYYY-MM) >= January 2005: ").strip()
-        if(
-            len(start_month_answer) == 7
-            and start_month_answer[4] == "-"
-            and start_month_answer[:4].isdigit()
-            and start_month_answer[5:].isdigit()
-            and int(start_month_answer[:4]) >= 2005
-        ):
-            try:
-                selected_start_month = np.datetime64(start_month_answer, "M")
-            except ValueError:
-                pass
+    start_month = ask_year_month("Determine the start month for analysis (YYYY-MM) >= January 2005: ")
+    end_month = ask_year_month("Determine the end month for analysis (YYYY-MM): ")
 
-        print("Use the format YYYY-MM, e.g. 2015-01.")
-    
+    months, growth, rate = build_series(country_answer, rate_answer, start_month, end_month)
+
+    print("\n=== SELECTION ===")
+    print("Country      :", country_answer)
+    print("Mortgage rate:", rate_answer)
+    print("Months used  :", months.shape[0])
+
+    if months.shape[0] < 3:
+        print("Not enough data for this selection. Choose a wider period.")
+    else:
+        print("Date range   :", months.min(), "to", months.max())
+        print("\n=== RQ1: Are higher mortgage interest rates associated with lower annual house price growth? ===")
+
+        print("--- Descriptive statistics ---")
+        # Mortgage Interest Rate
+        print("Mortgage Interest Rate:", rate_answer)
+        print("Mean:", round(statistics.mean(rate), 2))
+        print("Median:", round(statistics.median(rate), 2))
+        print("Standard Deviation:", round(statistics.stdev(rate), 2))
+        
+        # House Price Growth
+        print("\nHouse Price Growth (12mChange)")
+        print("Mean:", round(statistics.mean(growth), 2))
+        print("Median:", round(statistics.median(growth), 2))
+        print("Standard Deviation:", round(statistics.stdev(growth), 2))
+        
+        
+
 
 
     
