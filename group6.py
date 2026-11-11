@@ -221,8 +221,16 @@ if __name__ == "__main__":
 # ============================================================
 
 def start_function():
-    print("UK House Index Analysis - Group 6")
-    print("2. Compare new-build and existing property prices")
+        print("\nUK House Price Index Analysis - Group 6")
+        print("1. Within a region, are monthly changes in average house prices "
+              "and sales volumes correlated, and do volume changes lead price changes?")
+        print("2. How do price gaps and new-build premiums differ between "
+              "two selected areas over a user-selected period?")
+        print("3. Which UK regions had the most volatile monthly house price "
+              "changes over a user-selected period?")
+        print("4. Within a region, which property types were most affected "
+              "(detached, semi-detached, terraced or flats)?")
+        print("0. Exit")
 
     choice = input("Enter your choice: ").strip()
 
