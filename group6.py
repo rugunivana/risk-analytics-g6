@@ -9,6 +9,88 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 import statistics
+# ============================================================
+# Import Data and Filter Data
+# ============================================================
+# -------------------------
+# File Paths
+# -------------------------
+
+# house price index data
+path_uk_hpi = "uk_house_index_data_aug2026.csv"
+# interest rate
+path_rate2y75ltv = "IUMBV34.csv"
+path_rate5y75ltv = "IUMBV42.csv"
+
+# -------------------------
+# File Paths
+# -------------------------
+
+# house price index data
+path_uk_hpi = "uk_house_index_data_aug2026.csv"
+# interest rate
+path_rate2y75ltv = "IUMBV34.csv"
+path_rate5y75ltv = "IUMBV42.csv"
+
+# -------------------------
+# UK House Price Index Data
+# -------------------------
+
+## Data
+hpi = np.genfromtxt(
+    fname = path_uk_hpi,
+    delimiter = ",",
+    dtype = None,
+    names = True,
+    encoding = "utf-8"
+)
+## Column
+columns = np.genfromtxt(
+        fname = path_uk_hpi,
+        delimiter = ",",
+        dtype = str,
+        max_rows = 1
+    )
+# print(columns)
+
+# add a column called = 'Month' to the existing data; create a new array (hpi_new),.
+new_columns_list = hpi.dtype.descr + [("Month", "datetime64[M]")]
+hpi_new = np.empty(hpi.shape, dtype = new_columns_list)
+
+# copy all original columns
+for col in hpi.dtype.names:
+    hpi_new[col] = hpi[col]
+
+# convert Date into Month
+for i, d in enumerate(hpi["Date"]):
+    hpi_new["Month"][i] = np.datetime64(
+        f"{d[6:10]}-{d[3:5]}", "M"
+    )
+
+# replace original array
+hpi = hpi_new
+
+# print(hpi.dtype.names)
+# print(hpi[:5])
+
+# since data Norther Ireland only starts tracking from January 2005, we will filter the data to only include data from January 2005 onwards
+hpi = hpi[hpi["Month"] >= np.datetime64("2005-01")]
+
+'''
+The UK House Price Index (UK HPI) captures changes in the value of residential properties.
+The UK HPI uses sales data collected on residential housing transactions, whether for cash or with a mortgage. Properties have been included:
+in England and Wales since January 1995
+in Scotland since January 2004
+in Northern Ireland since January 2005
+Data is available at a national and regional level, as well as counties, local authorities and London boroughs.
+'''
+
+# -------------------------
+# Interest Rate Data - Combined the rate2y and rate5y of LTV 75% into one array
+# -------------------------
+
+
+
 
 # ============================================================
 # Function and Definition
