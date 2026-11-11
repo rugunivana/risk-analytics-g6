@@ -23,16 +23,6 @@ path_rate2y75ltv = "IUMBV34.csv"
 path_rate5y75ltv = "IUMBV42.csv"
 
 # -------------------------
-# File Paths
-# -------------------------
-
-# house price index data
-path_uk_hpi = "uk_house_index_data_aug2026.csv"
-# interest rate
-path_rate2y75ltv = "IUMBV34.csv"
-path_rate5y75ltv = "IUMBV42.csv"
-
-# -------------------------
 # UK House Price Index Data
 # -------------------------
 
@@ -88,6 +78,62 @@ Data is available at a national and regional level, as well as counties, local a
 # -------------------------
 # Interest Rate Data - Combined the rate2y and rate5y of LTV 75% into one array
 # -------------------------
+
+## rate2y
+rate2y75ltv = np.genfromtxt(
+    fname = path_rate2y75ltv,
+    delimiter = ",",
+    dtype = None,
+    skip_header = 1,
+    names = ["Date","Rate2y"],
+    encoding = "utf-8"
+)
+# print(rate2y75ltv[:5])
+# [('31 Jan 1995', 8.13) ('28 Feb 1995', 8.38) ('31 Mar 1995', 8.08) ('30 Apr 1995', 8.29) ('31 May 1995', 8.22)]
+
+'''
+there are two things we need to do to clean the data:
+1. convert the rate to float
+2. change the date format into yyyy-mm-dd format
+'''
+
+# 1. convert the rate to float
+def convert_to_float(data, column):
+    for i, d in enumerate(data[column]):
+        data[column][i] = float(d)
+    return data
+
+rate2y75ltv = convert_to_float(rate2y75ltv, "Rate2y")
+
+# 2. change the date into yyyy-mm-dd format
+
+
+
+## rate5y
+rate5y75ltv = np.genfromtxt(
+    fname = path_rate5y75ltv,
+    delimiter = ",",
+    dtype = None,
+    skip_header = 1,
+    names = ["Date","Rate5y"],
+    encoding = "utf-8"
+)
+# print(rate5y75ltv[:5])
+
+'''
+There are two things we need to do to clean the data:
+1. remove the " from the rate5y datasets & convert the rate to float
+2. change the date format into 20yy-mm-dd format
+'''
+
+# 1. remove the " from the rate5y datasets & convert the rate to float
+for col in rate5y75ltv.dtype.names:
+    for i, d in enumerate(rate5y75ltv[col]):
+        rate5y75ltv[col][i] = d.strip('"')
+
+rate5y75ltv = convert_to_float(rate5y75ltv, "Rate5y")
+
+# 2. change the date format into 20yy-mm-dd format
 
 
 
@@ -477,9 +523,9 @@ def read_price(text):
 
     return price if math.isfinite(price) else None
 
-
+'''
 def run_q4():
-    csv_path = Path("uk_house_index_data_aug2026.csv")
+    csv_path = "uk_house_index_data_aug2026.csv"
 
     price_columns = {
         "DetachedPrice": "Detached",
@@ -632,7 +678,7 @@ def run_q4():
 if __name__ == "__main__":
     run_q4()
 
-
+'''
 
 
 
@@ -658,10 +704,13 @@ def start_function():
         run_q2()
     if choice == "3":
         run_q3()
-    if choice == "4":
-        run_q4()
     else:
         print("Invalid choice. Please enter 2.")
+    '''
+    if choice == "4":
+        run_q4()
+    '''
+
 
 
 if __name__ == "__main__":
