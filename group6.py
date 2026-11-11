@@ -386,14 +386,6 @@ def run_q3():
 # ============================================================
 # RQ4
 # ============================================================
-import csv
-import math
-from datetime import datetime
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-
-
 def read_price(text):
     """Return a number, or None if the price is missing or invalid."""
     try:
@@ -555,21 +547,8 @@ def run_q4():
     fig.tight_layout()
     plt.show()
 
-    save_choice = input("\nSave the result table as CSV? (yes/no): ").strip().lower()
-
-    if save_choice == "yes":
-        output_path = Path("Q4_results.csv").resolve()
-
-        with output_path.open("w", encoding="utf-8-sig", newline="") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(headers)
-            writer.writerows(results)
-
-        print(f"Results saved to: {output_path}")
-    elif save_choice == "no":
-        print("Results were not saved.")
-    else:
-        print("Please enter yes or no.")
+if __name__ == "__main__":
+    run_q4()
 
 
 
