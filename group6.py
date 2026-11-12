@@ -344,7 +344,25 @@ def run_q1():
         print("Mean:", round(statistics.mean(growth), 2))
         print("Median:", round(statistics.median(growth), 2))
         print("Standard Deviation:", round(statistics.stdev(growth), 2))
+
+        pearson = stats.pearsonr(rate, growth)
+        spearman = stats.spearmanr(rate, growth)
+        fit = stats.linregress(rate, growth)
+    
+        print("--- Association ---")
+        print(f"Pearson r    : {pearson.statistic:.3f} (p = {pearson.pvalue:.4f})")
+    
         
+        print("--- Pearson Correlation ---")
+        print(f"r = {pearson.statistic:.3f}")
+        print(f"p-value = {pearson.pvalue:.4f}")
+        
+        if pearson.pvalue >= 0.05:
+            print("Result: No statistically significant linear relationship.")
+        elif pearson.statistic < 0:
+            print("Result: Significant negative linear relationship.")
+        else:
+            print("Result: Significant positive linear relationship.")
         
 
 
