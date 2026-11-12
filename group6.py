@@ -9,6 +9,7 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 import statistics
+from scipy import stats
 # ============================================================
 # Import Data and Filter Data
 # ============================================================
@@ -744,7 +745,7 @@ def read_price(text):
 
     return price if math.isfinite(price) else None
 
-'''
+
 def run_q4():
     csv_path = "uk_house_index_data_aug2026.csv"
 
@@ -896,10 +897,6 @@ def run_q4():
     fig.tight_layout()
     plt.show()
 
-if __name__ == "__main__":
-    run_q4()
-
-'''
 
 
 
@@ -908,31 +905,42 @@ if __name__ == "__main__":
 # ============================================================
 
 def start_function():
-    print("\nUK House Price Index Analysis - Group 6")
-    print("1. Within a region, are monthly changes in average house prices "
-              "and sales volumes correlated, and do volume changes lead price changes?")
-    print("2. How do price gaps and new-build premiums differ between "
-              "two selected areas over a user-selected period?")
-    print("3. Which UK regions had the most volatile monthly house price "
-              "changes over a user-selected period?")
-    print("4. Within a region, which property types were most affected "
-              "(detached, semi-detached, terraced or flats)?")
-    print("0. Exit")
+    print("=" * 65)
+    print("         UK HOUSE PRICE INDEX ANALYSIS - GROUP 6")
+    print("=" * 65)
 
-    choice = input("Enter your choice: ").strip()
+    print("\nWelcome to the UK House Price Analysis Program!")
+    print("This program allows you to explore housing market trends")
+    print("across the United Kingdom using historical house price data")
+    print("and mortgage interest rates.")
+    print("\nYou can compare regions, examine house price changes,")
+    print("and explore relationships between mortgage rates and prices.")
 
-    if choice == "2":
+    print("-" * 65)
+
+    questions = [
+        "Are higher mortgage interest rates associated with lower annual house price growth?",
+        "How do price gaps and new-build premiums differ between two selected areas over a user-selected period?",
+        "Which UK regions had the most volatile monthly house price changes over a user-selected period?",
+        "Which property types (detached, semi-detached, terraced or flats) experienced the greatest percentage change in house prices ?",
+        "Exit"
+    ]
+
+    choice = ask_option("Choose a research question:", questions)
+
+    if choice == questions[0]:
+        run_q1()
+    elif choice == questions[1]:
         run_q2()
-    if choice == "3":
+    elif choice == questions[2]:
         run_q3()
-    else:
-        print("Invalid choice. Please enter 2.")
-    '''
-    if choice == "4":
+    elif choice == questions[3]:
         run_q4()
-    '''
-
+    else:
+        print("Goodbye!")
 
 
 if __name__ == "__main__":
     start_function()
+
+
