@@ -6,7 +6,6 @@
 # ============================================================
 
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
 import statistics
 from scipy import stats
@@ -926,7 +925,7 @@ def start_function():
         "Exit"
     ]
 
-    choice = ask_option("Choose a research question:", questions)
+    choice = ask_option("\nPlease select a Research Question to explore:", questions)
 
     if choice == questions[0]:
         run_q1()
