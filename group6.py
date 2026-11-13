@@ -299,7 +299,33 @@ def build_series(country, rate_name, start, end):
     )
     return common[keep], growth[keep], rate[keep]
 
-    
+def choose_region(prompt, region_names):
+    while True:
+        search = input(prompt).strip().lower()
+
+        if search == "":
+            print("Please enter a region name.")
+            continue
+
+        matches = []
+
+        for name in region_names:
+            if search == name.lower():
+                return name
+
+            if search in name.lower():
+                matches.append(name)
+
+        if len(matches) == 1:
+            print("Matched region:", matches[0])
+            return matches[0]
+
+        if len(matches) > 1:
+            print("Multiple regions match. Please enter a more specific name:")
+            for name in matches:
+                print("-", name)
+        else:
+            print("No matching region found. Please try again.")
 # ============================================================
 # RQ1: Are higher mortgage interest rates associated with lower annual house price growth?
 # ============================================================
@@ -372,45 +398,8 @@ def run_q1():
 # ============================================================
 # RQ2
 # ============================================================
-def choose_region(prompt, region_names):
-    while True:
-        search = input(prompt).strip().lower()
-
-        if search == "":
-            print("Please enter a region name.")
-            continue
-
-        matches = []
-
-        for name in region_names:
-            if search == name.lower():
-                return name
-
-            if search in name.lower():
-                matches.append(name)
-
-        if len(matches) == 1:
-            print("Matched region:", matches[0])
-            return matches[0]
-
-        if len(matches) > 1:
-            print("Multiple regions match. Please enter a more specific name:")
-            for name in matches:
-                print("-", name)
-        else:
-            print("No matching region found. Please try again.")
 
 def run_q2():
-    file_path = "uk_house_index_data_aug2026.csv"
-
-    # Read the column names
-    columns = np.loadtxt(
-        fname = file_path,
-        delimiter = ",",
-        dtype = str,
-        max_rows = 1
-    )
-
     for i in range(len(columns)):
         if columns[i] == "Date":
             date_column = i
@@ -423,7 +412,7 @@ def run_q2():
 
     # Read the required columns
     data = np.loadtxt(
-        fname = file_path,
+        fname = path_uk_hpi,
         delimiter = ",",
         dtype = str,
         skiprows = 1,
