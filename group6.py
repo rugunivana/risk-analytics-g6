@@ -735,6 +735,14 @@ def run_q3():
 # ============================================================
 # RQ4
 # ============================================================
+import csv
+import math
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+
+
 def read_price(text):
     """Return a number, or None if the price is missing or invalid."""
     try:
@@ -746,7 +754,7 @@ def read_price(text):
 
 
 def run_q4():
-    csv_path = "uk_house_index_data_aug2026.csv"
+    csv_path = Path("uk_house_index_data_aug2026.csv")
 
     price_columns = {
         "DetachedPrice": "Detached",
@@ -897,8 +905,6 @@ def run_q4():
     plt.show()
 
 
-
-
 # ============================================================
 # Main Program
 # ============================================================
@@ -925,21 +931,33 @@ def start_function():
         "Exit"
     ]
 
-    choice = ask_option("\nPlease select a Research Question to explore:", questions)
+    while True:
+        choice = ask_option(
+            "\nPlease select a Research Question to explore:",
+            questions
+        )
 
-    if choice == questions[0]:
-        run_q1()
-    elif choice == questions[1]:
-        run_q2()
-    elif choice == questions[2]:
-        run_q3()
-    elif choice == questions[3]:
-        run_q4()
-    else:
-        print("Goodbye!")
+        if choice == questions[0]:
+            run_q1()
+        elif choice == questions[1]:
+            run_q2()
+        elif choice == questions[2]:
+            run_q3()
+        elif choice == questions[3]:
+            run_q4()
+        else:
+            break
+
+        next_step = ask_option(
+            "\nWhat would you like to do next?",
+            ["Choose another question", "Exit"]
+        )
+
+        if next_step == "Exit":
+            break
+
+    print("Goodbye!")
 
 
 if __name__ == "__main__":
     start_function()
-
-
