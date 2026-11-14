@@ -627,6 +627,10 @@ def run_q3():
     print("Valid monthly changes:", valid_count)
     print("Missing monthly changes:", missing_count)
 
+    if valid_count == 0:
+        print("No valid data found for the selected years.")
+        return
+
     #Get the region names
     region_names = []
 
@@ -692,6 +696,15 @@ def run_q3():
         print(local_region_results[i])
 
     #compare four UK countries
+    available_countries = []
+
+    for result in region_results:
+        if result[0] in countries:
+            available_countries.append(result[0])
+
+    if len(available_countries) < 4:
+        print("Note: Not all four countries have enough data.")
+    
     print()
     print("Price volatility in the four UK countries:")
 
