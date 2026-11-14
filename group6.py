@@ -425,7 +425,11 @@ def run_q2():
     )
 
     # Get the user's choices
-    region_names = np.unique(data[:, 1])
+    region_names = []
+    for name in data[:, 1]:
+        if name not in region_names:
+            region_names.append(name)
+            
     region_1 = choose_region("Enter the first region: ", region_names)
     region_2 = choose_region("Enter the second region: ", region_names)
 
