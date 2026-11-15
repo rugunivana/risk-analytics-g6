@@ -655,8 +655,8 @@ def run_q3():
     }
 
     #Ask users to select a time period
-    start_text = input("Enter the start year: ").strip()
-    end_text = input("Enter the end year: ").strip()
+    start_text = input("Enter the start year(2005 onwards): ").strip()
+    end_text = input("Enter the end year(2005 onwards): ").strip()
 
     if not start_text.isdigit() or not end_text.isdigit():
         print("Please enter whole numbers for the years.")
@@ -821,11 +821,10 @@ def run_q3():
     print()
     print("Price volatility in the four UK countries:")
 
-    for result in country_results:
-        print(result[0],
-              "Average change:", round(result[1], 3),
-              "Standard deviation:", round(result[2], 3)
-              )
+    for i, result in enumerate(country_results, 1):
+        print(f"\n{i}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
 
     #Draw the bar chart
     country_names = []
