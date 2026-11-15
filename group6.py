@@ -339,9 +339,14 @@ def run_q1():
     print("=" * 65)
 
     print("> Research Question:")
+    print("Are higher mortgage interest rates associated with lower")
+    print("annual house price growth?")
 
 
     print("\n> About this analysis")
+    print("This program examines the relationship between mortgage")
+    print("interest rates and annual house price growth in the UK.")
+    print("It uses descriptive statistics and Pearson correlation to analyze the relationship.")
 
     print("\n> You will be asked to select:")
     print("1. A UK Region (England, Wales, northern Ireland, Scotland, United Kingdom")
