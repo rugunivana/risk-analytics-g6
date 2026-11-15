@@ -441,6 +441,25 @@ def run_q1():
 # ============================================================
 
 def run_q2():
+        # Introduction
+    print("\n" + "=" * 65)
+    print("Q2 | New-Build and Existing Home Price Comparison")
+    print("=" * 65)
+
+    print("> Research Question:")
+    print("How do price gaps and new-build premiums differ between")
+    print("two UK areas over a period chosen by the user?")
+
+    print("\n> About this analysis")
+    print("This analysis uses monthly data from the UK House Price Index")
+    print("to compare new-build and existing home prices in two areas.")
+    print("It calculates the average monthly price gap in pounds and")
+    print("the average monthly new-build premium as a percentage.")
+
+    print("\n> You will be asked to select:")
+    print("1. Two different UK areas")
+    print("2. A start year and an end year for the analysis")
+    
     for i in range(len(columns)):
         if columns[i] == "Date":
             date_column = i
