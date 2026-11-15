@@ -330,9 +330,26 @@ def choose_region(prompt, region_names):
 # RQ1: Are higher mortgage interest rates associated with lower annual house price growth?
 # ============================================================
 
-
 def run_q1():
 
+    # Introduction
+
+    print("\n" + "=" * 65)
+    print("Q1 | Mortgage Interest Rates and House Price Growth Relationship")
+    print("=" * 65)
+
+    print("> Research Question:")
+
+
+    print("\n> About this analysis")
+
+    print("\n> You will be asked to select:")
+    print("1. A UK Region (England, Wales, northern Ireland, Scotland, United Kingdom")
+    print("2. Choose between 2-year and 5-year 75% LTV fixed mortgage interest rates")
+    print("3. A start and end month for the analysis")
+
+    print("\n")
+    
     # Choose Region
     countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
     country_answer = ask_option("Choose the region you want to analyse:", countries)
@@ -384,12 +401,31 @@ def run_q1():
         print(f"p-value = {pearson.pvalue:.4f}")
         
         if pearson.pvalue >= 0.05:
-            print("Result: No statistically significant linear relationship.")
+            print("Result: No statistifically significant linear relationship")
+            print("Hence, there is not enough statistical evidence to conclude that mortgage interest rates are linearly related to house price growth.")
         elif pearson.statistic < 0:
             print("Result: Significant negative linear relationship.")
+            print("Higher mortgage interest rates tend to be associated with lower annual house price growth.")
+            print("Note - this relationship is statistifically siginificant at the 5% level.")
         else:
             print("Result: Significant positive linear relationship.")
+            print("Higher mortgage interest rate tend to be associated with higher annual house price growth")
+            print("Note - this relationship is statistifically siginificant at the 5% level.")
+
+        plt.scatter(rate, growth)
+
+        line_x = np.linspace(rate.min(), rate.max(), 100)
+        line_y = fit.intercept + fit.slope * line_x
         
+        plt.plot(line_x, line_y, color="red")
+        
+        plt.xlabel("Mortgage interest rate (%)")
+        plt.ylabel("Annual house price growth (%)")
+        plt.title("Mortgage Rates vs House Price Growth")
+        
+        plt.show()
+                
+
 
 
 
