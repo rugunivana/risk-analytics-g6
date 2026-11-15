@@ -809,14 +809,8 @@ def run_q3():
 
 
 # ============================================================
-# RQ4
+# RQ4: How have house prices changed across property types in a selected region and period?
 # ============================================================
-import csv
-import math
-from datetime import datetime
-from pathlib import Path
-
-import matplotlib.pyplot as plt
 
 
 def read_price(text):
@@ -826,48 +820,51 @@ def read_price(text):
     except (TypeError, ValueError):
         return None
 
-    return price if math.isfinite(price) else None
-
+    return price if np.isfinite(price) else None
 
 def run_q4():
-    csv_path = Path("uk_house_index_data_aug2026.csv")
-
+	# Set the price columns for each property type
     price_columns = {
         "DetachedPrice": "Detached",
         "SemiDetachedPrice": "Semi-detached",
         "TerracedPrice": "Terraced",
         "FlatPrice": "Flat",
     }
-
+    # Ask the user to choose a region
     print("\nQ4 | Property Type Comparison")
-    region = input("Region (Enter for Scotland): ").strip() or "Scotland"
+    region = input("Region: ").strip() or "Scotland"
 
     # Read prices for the selected region, grouped by month.
     prices = {}
     selected_region = region.casefold()
 
-    with csv_path.open(encoding="utf-8-sig", newline="") as csv_file:
-        for row in csv.DictReader(csv_file):
-            if row["RegionName"].casefold() != selected_region:
-                continue
-
-            region = row["RegionName"]
-            month = datetime.strptime(row["Date"], "%d/%m/%Y")
-            prices[month] = {
-                name: read_price(row[column])
-                for column, name in price_columns.items()
-            }
+    # Use the shared HPI data to get prices for the selected region.
+    for row in hpi:
+        if row["RegionName"].casefold() != selected_region:
+            continue
+    
+        region = row["RegionName"]
+        month = row["Year-Month"]
+    
+        prices[month] = {}
+    
+        for column, name in price_columns.items():
+            prices[month][name] = read_price(row[column])
 
     if not prices:
         print("Region not found. Try Scotland, England, or London.")
         return
-
-    start_text = input("Start month (YYYY-MM, Enter for 2020-01): ").strip()
-    end_text = input("End month (YYYY-MM, Enter for 2025-01): ").strip()
-
+    
+    # Ask for the start and end months
+    start_text = input("Start month (YYYY-MM): ").strip()
+    end_text = input("End month (YYYY-MM): ").strip()
+    
     try:
-        start = datetime.strptime(start_text or "2020-01", "%Y-%m")
-        end = datetime.strptime(end_text or "2025-01", "%Y-%m")
+        start = np.datetime64(start_text or "2020-01", "M")
+        end = np.datetime64(end_text or "2025-01", "M")
+    except ValueError:
+        print("Please enter a month in YYYY-MM format, for example 2020-01.")
+        return
     except ValueError:
         print("Please enter a month in YYYY-MM format, for example 2020-01.")
         return
@@ -879,17 +876,18 @@ def run_q4():
     if start not in prices or end not in prices:
         print(f"{region} has no data for one or both selected months.")
         return
-
+	# Ask which property types to compare
     options = dict(zip(["1", "2", "3", "4"], price_columns.values()))
     print("1. Detached  2. Semi-detached  3. Terraced  4. Flat")
 
-    choice = input("Property types (e.g. 1,4 or Enter for all): ").strip()
+    choice = input("Property types (e.g. 1,4): ").strip()
     numbers = [item.strip() for item in choice.split(",")] if choice else list(options)
 
     if any(number not in options for number in numbers):
         print("Please select property types using numbers 1 to 4.")
         return
-
+   
+    # Calculate the change in pounds and as a percentage
     property_types = [options[number] for number in dict.fromkeys(numbers)]
     view = input("Chart view (1 = relative growth, 2 = price in £): ").strip() or "1"
 
@@ -897,7 +895,7 @@ def run_q4():
         print("Please enter 1 or 2 for the chart view.")
         return
 
-    # Use the same result rows for the printed table, charts and CSV.
+    # Use the same result rows for the printed table, charts.
     results = []
     missing_types = []
 
@@ -924,7 +922,7 @@ def run_q4():
 
     headers = ("Property type", "Start price (£)", "End price (£)", "Change (£)", "Change (%)")
 
-    print(f"\n{region} | {start:%b %Y} to {end:%b %Y}")
+    print(f"\n{region} | {start} to {end}")
     print(f"{headers[0]:<16} {headers[1]:>16} {headers[2]:>16} "
           f"{headers[3]:>14} {headers[4]:>12}")
 
@@ -976,7 +974,7 @@ def run_q4():
     right.set_title("Cumulative price change", loc="left")
     right.set_xlabel("Change over selected period (%)")
 
-    fig.suptitle(f"{region} | {start:%b %Y} to {end:%b %Y}", fontweight="bold")
+    fig.suptitle(f"{region} | {start} to {end}", fontweight="bold")
     fig.tight_layout()
     plt.show()
 
