@@ -670,11 +670,21 @@ def run_q3():
                 average_change,
                 standard_deviation
             ])
+    
+    # Select local authority areas across the UK
+    local_area_names = []
+
+    area_prefixes = ("E06", "E07", "E08", "E09","S12", "W06", "N09")
+
+    for row in valid_data:
+        if row[2].startswith(area_prefixes):
+            if row[1] not in local_area_names:
+                local_area_names.append(row[1])
 
     local_region_results = []
 
     for result in region_results:
-        if result[0] not in countries:
+        if result[0] in local_area_names:
             local_region_results.append(result)
 
     #Show regions with the highest volatility
