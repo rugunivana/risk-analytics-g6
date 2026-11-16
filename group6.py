@@ -925,9 +925,7 @@ def run_q4():
     try:
         start = np.datetime64(start_text or "2020-01", "M")
         end = np.datetime64(end_text or "2025-01", "M")
-    except ValueError:
-        print("Please enter a month in YYYY-MM format, for example 2020-01.")
-        return
+   
     except ValueError:
         print("Please enter a month in YYYY-MM format, for example 2020-01.")
         return
