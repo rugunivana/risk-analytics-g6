@@ -853,6 +853,18 @@ def run_q3():
 # ============================================================
 # RQ4: How have house prices changed across property types in a selected region and period?
 # ============================================================
+  
+
+def read_price(text):
+    """Return a number, or None if the price is missing or invalid."""
+    try:
+        price = float(text)
+    except (TypeError, ValueError):
+        return None
+
+    return price if np.isfinite(price) else None
+
+def run_q4():
     print("\n" + "=" * 65)
     print("Q4 | Property Type Comparison")
     print("=" * 65)
@@ -873,18 +885,8 @@ def run_q3():
     print("3. One or more property types to compare")
     print("4. A chart view (relative growth or prices in pounds)")
     print()
-
-def read_price(text):
-    """Return a number, or None if the price is missing or invalid."""
-    try:
-        price = float(text)
-    except (TypeError, ValueError):
-        return None
-
-    return price if np.isfinite(price) else None
-
-def run_q4():
-	# Set the price columns for each property type
+    
+    # Set the price columns for each property type
     price_columns = {
         "DetachedPrice": "Detached",
         "SemiDetachedPrice": "Semi-detached",
