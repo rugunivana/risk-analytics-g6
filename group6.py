@@ -853,7 +853,26 @@ def run_q3():
 # ============================================================
 # RQ4: How have house prices changed across property types in a selected region and period?
 # ============================================================
+    print("\n" + "=" * 65)
+    print("Q4 | Property Type Comparison")
+    print("=" * 65)
 
+    print("> Research Question:")
+    print("Which property type had the largest percentage change in")
+    print("average price in the selected region and period?")
+
+    print("\n> About this analysis")
+    print("This analysis uses UK House Price Index data to compare")
+    print("detached houses, semi-detached houses, terraced houses and flats.")
+    print("The line chart shows monthly price trends, and the bar chart")
+    print("shows the percentage change from the start to the end month.")
+
+    print("\n> You will be asked to select:")
+    print("1. A UK region")
+    print("2. A start and end month for the analysis (YYYY-MM)")
+    print("3. One or more property types to compare")
+    print("4. A chart view (relative growth or prices in pounds)")
+    print()
 
 def read_price(text):
     """Return a number, or None if the price is missing or invalid."""
