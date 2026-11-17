@@ -1,10 +1,12 @@
 # UK House Price Index
 
 This project looks at the following research questions using UK House Price Index (UK HPI) data:
-1. Interest-Rate x Price Sensitivity Analysis
-2. Linear Regression How is monthly house-price growth associated with changes in sales volume across UK 
-3. Which UK regions had the most volatile monthly house-price changes over a user-selected period?
-4. Within a region, which property types (detached, semi-detached, terraced, flat) were most affected?
+1. Are higher mortgage interest rates associated with lower annual house price growth?
+2. How do price gaps and new-build premiums differ between two selected areas over a user-selected period?
+3. Which UK regions had the most volatile monthly house price changes over a user-selected period?
+4. Which property types (detached, semi-detached, terraced or flats) experienced the greatest percentage change in house prices
+
+
 
 The main data source is [UK HPI full file (Aug 2026)](https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data/UK-HPI-full-file-2026-08.csv?utm_medium=GOV.UK&utm_source=datadownload&utm_campaign=full_fil&utm_term=9.30_21_10_26), published by HM Land Registry.
 
@@ -129,7 +131,7 @@ for c in columns:
     else:
         types.append("f8") #float, for all price, index, change and volume columns
     
-data = np.genfromtxt(
+hpi = np.genfromtxt(
     fname = file_path,
     delimiter = ",",
     dtype = types,
@@ -137,13 +139,14 @@ data = np.genfromtxt(
     converters = {"Date": lambda s: np.datetime64(s[6:10] + "-" + s[3:5] + "-" + s[0:2])} #covert date to YYYY-MM-DD format
 )
 
+
 # Other Data Fixes
-names = data.dtype.names
-years = data["Date"].astype("datetime64[Y]").astype(int)+1970 # NumPy stores dates as an offset from 1970-01-01 (the Unix epoch)
+names = hpi.dtype.names
+years = hpi["Date"].astype("datetime64[Y]").astype(int)+1970 # NumPy stores dates as an offset from 1970-01-01 (the Unix epoch)
 year_list, year_counts = np.unique(years, return_counts = True) # Find unique elements of an array and return the number of times each unique item appears in ar.
 ```
 
-# 2. Data Exploration (EDA) 
+# 2. UK HPI - Data Exploration (EDA) 
 
 ## Shape and Dates
 We took the number of rows, columns and date range of the data
@@ -152,11 +155,11 @@ We took the number of rows, columns and date range of the data
 ```python
  
 print("=== OVERVIEW ===")
-print("Rows         :", data.shape[0])
+print("Rows         :", hpi.shape[0])
 print("Columns      :", len(names))
-print("Date range   :", data["Date"].min(), "to", data["Date"].max())
+print("Date range   :", hpi["Date"].min(), "to", hpi["Date"].max())
 print("Years listed :", year_list.min(), "-", year_list.max(), f"({len(year_list)} years)")
-print("Months listed:", len(np.unique(data["Date"])))
+print("Months listed:", len(np.unique(hpi["Date"])))
 ```
 
     === OVERVIEW ===
@@ -171,9 +174,9 @@ print("Months listed:", len(np.unique(data["Date"])))
 
 
 ```python
-regions, region_counts = np.unique(data["RegionName"], return_counts=True)
+regions, region_counts = np.unique(hpi["RegionName"], return_counts=True)
 country_map = {"E": "England", "W": "Wales", "S": "Scotland", "N": "Northern Ireland", "K": "UK / Great Britain level"}
-prefix, prefix_counts = np.unique([c[0] for c in np.unique(data["AreaCode"])], return_counts=True)
+prefix, prefix_counts = np.unique([c[0] for c in np.unique(hpi["AreaCode"])], return_counts=True)
  
 print("\n=== REGIONS ===")
 print("Unique regions:", len(regions))
@@ -181,9 +184,9 @@ print("Areas by code prefix:")
 for p, n in zip(prefix, prefix_counts):
     print(f"  {p} ({country_map.get(p, 'other')}): {n}")
  
-print("\nRegion | rows | first date | last date")
-for r, n in zip(regions, region_counts):
-    d = data["Date"][data["RegionName"] == r]
+print("\nRegion | rows | first date | last date    (First 10 Rows)")
+for r, n in zip(regions[:10], region_counts[:10]):
+    d = hpi["Date"][hpi["RegionName"] == r]
     print(f"  {r:<40} {n:>5}  {d.min()}  {d.max()}")
 ```
 
@@ -197,7 +200,7 @@ for r, n in zip(regions, region_counts):
       S (Scotland): 33
       W (Wales): 23
     
-    Region | rows | first date | last date
+    Region | rows | first date | last date    (First 10 Rows)
       Aberdeenshire                              272  2004-01-01  2026-08-01
       Adur                                       380  1995-01-01  2026-08-01
       Amber Valley                               380  1995-01-01  2026-08-01
@@ -208,408 +211,16 @@ for r, n in zip(regions, region_counts):
       Armagh City Banbridge and Craigavon        260  2005-01-01  2026-08-01
       Arun                                       380  1995-01-01  2026-08-01
       Ashfield                                   380  1995-01-01  2026-08-01
-      Ashford                                    380  1995-01-01  2026-08-01
-      Babergh                                    380  1995-01-01  2026-08-01
-      Barking and Dagenham                       380  1995-01-01  2026-08-01
-      Barnet                                     380  1995-01-01  2026-08-01
-      Barnsley                                   380  1995-01-01  2026-08-01
-      Basildon                                   380  1995-01-01  2026-08-01
-      Basingstoke and Deane                      380  1995-01-01  2026-08-01
-      Bassetlaw                                  380  1995-01-01  2026-08-01
-      Bath and North East Somerset               380  1995-01-01  2026-08-01
-      Bedford                                    380  1995-01-01  2026-08-01
-      Belfast                                    260  2005-01-01  2026-08-01
-      Bexley                                     380  1995-01-01  2026-08-01
-      Birmingham                                 380  1995-01-01  2026-08-01
-      Blaby                                      380  1995-01-01  2026-08-01
-      Blackburn with Darwen                      380  1995-01-01  2026-08-01
-      Blackpool                                  380  1995-01-01  2026-08-01
-      Blaenau Gwent                              380  1995-01-01  2026-08-01
-      Bolsover                                   380  1995-01-01  2026-08-01
-      Bolton                                     380  1995-01-01  2026-08-01
-      Boston                                     380  1995-01-01  2026-08-01
-      Bournemouth Christchurch and Poole         380  1995-01-01  2026-08-01
-      Bracknell Forest                           380  1995-01-01  2026-08-01
-      Bradford                                   380  1995-01-01  2026-08-01
-      Braintree                                  380  1995-01-01  2026-08-01
-      Breckland                                  380  1995-01-01  2026-08-01
-      Brent                                      380  1995-01-01  2026-08-01
-      Brentwood                                  380  1995-01-01  2026-08-01
-      Bridgend                                   380  1995-01-01  2026-08-01
-      Brighton and Hove                          380  1995-01-01  2026-08-01
-      Broadland                                  380  1995-01-01  2026-08-01
-      Bromley                                    380  1995-01-01  2026-08-01
-      Bromsgrove                                 380  1995-01-01  2026-08-01
-      Broxbourne                                 380  1995-01-01  2026-08-01
-      Broxtowe                                   380  1995-01-01  2026-08-01
-      Buckinghamshire                            380  1995-01-01  2026-08-01
-      Burnley                                    380  1995-01-01  2026-08-01
-      Bury                                       380  1995-01-01  2026-08-01
-      Caerphilly                                 380  1995-01-01  2026-08-01
-      Calderdale                                 380  1995-01-01  2026-08-01
-      Cambridge                                  380  1995-01-01  2026-08-01
-      Cambridgeshire                             380  1995-01-01  2026-08-01
-      Camden                                     380  1995-01-01  2026-08-01
-      Cannock Chase                              380  1995-01-01  2026-08-01
-      Canterbury                                 380  1995-01-01  2026-08-01
-      Cardiff                                    380  1995-01-01  2026-08-01
-      Carmarthenshire                            380  1995-01-01  2026-08-01
-      Castle Point                               380  1995-01-01  2026-08-01
-      Causeway Coast and Glens                   260  2005-01-01  2026-08-01
-      Central Bedfordshire                       380  1995-01-01  2026-08-01
-      Ceredigion                                 380  1995-01-01  2026-08-01
-      Charnwood                                  380  1995-01-01  2026-08-01
-      Chelmsford                                 380  1995-01-01  2026-08-01
-      Cheltenham                                 380  1995-01-01  2026-08-01
-      Cherwell                                   380  1995-01-01  2026-08-01
-      Cheshire East                              380  1995-01-01  2026-08-01
-      Cheshire West and Chester                  380  1995-01-01  2026-08-01
-      Chesterfield                               380  1995-01-01  2026-08-01
-      Chichester                                 380  1995-01-01  2026-08-01
-      Chorley                                    380  1995-01-01  2026-08-01
-      City of Aberdeen                           272  2004-01-01  2026-08-01
-      City of Bristol                            380  1995-01-01  2026-08-01
-      City of Derby                              380  1995-01-01  2026-08-01
-      City of Dundee                             272  2004-01-01  2026-08-01
-      City of Edinburgh                          272  2004-01-01  2026-08-01
-      City of Glasgow                            272  2004-01-01  2026-08-01
-      City of Kingston upon Hull                 380  1995-01-01  2026-08-01
-      City of London                             380  1995-01-01  2026-08-01
-      City of Nottingham                         380  1995-01-01  2026-08-01
-      City of Peterborough                       380  1995-01-01  2026-08-01
-      City of Plymouth                           380  1995-01-01  2026-08-01
-      City of Westminster                        380  1995-01-01  2026-08-01
-      Clackmannanshire                           272  2004-01-01  2026-08-01
-      Colchester                                 380  1995-01-01  2026-08-01
-      Conwy                                      380  1995-01-01  2026-08-01
-      Cornwall                                   380  1995-01-01  2026-08-01
-      Cotswold                                   380  1995-01-01  2026-08-01
-      County Durham                              380  1995-01-01  2026-08-01
-      Coventry                                   380  1995-01-01  2026-08-01
-      Crawley                                    380  1995-01-01  2026-08-01
-      Croydon                                    380  1995-01-01  2026-08-01
-      Cumberland                                 380  1995-01-01  2026-08-01
-      Dacorum                                    380  1995-01-01  2026-08-01
-      Darlington                                 380  1995-01-01  2026-08-01
-      Dartford                                   380  1995-01-01  2026-08-01
-      Denbighshire                               380  1995-01-01  2026-08-01
-      Derbyshire                                 380  1995-01-01  2026-08-01
-      Derbyshire Dales                           380  1995-01-01  2026-08-01
-      Derry City and Strabane                    260  2005-01-01  2026-08-01
-      Devon                                      380  1995-01-01  2026-08-01
-      Doncaster                                  380  1995-01-01  2026-08-01
-      Dorset                                     380  1995-01-01  2026-08-01
-      Dover                                      380  1995-01-01  2026-08-01
-      Dudley                                     380  1995-01-01  2026-08-01
-      Dumfries and Galloway                      272  2004-01-01  2026-08-01
-      Ealing                                     380  1995-01-01  2026-08-01
-      East Ayrshire                              272  2004-01-01  2026-08-01
-      East Cambridgeshire                        380  1995-01-01  2026-08-01
-      East Devon                                 380  1995-01-01  2026-08-01
-      East Dunbartonshire                        272  2004-01-01  2026-08-01
-      East Hampshire                             380  1995-01-01  2026-08-01
-      East Hertfordshire                         380  1995-01-01  2026-08-01
-      East Lindsey                               380  1995-01-01  2026-08-01
-      East Lothian                               272  2004-01-01  2026-08-01
-      East Midlands                              701  1968-04-01  2026-08-01
-      East Renfrewshire                          272  2004-01-01  2026-08-01
-      East Riding of Yorkshire                   380  1995-01-01  2026-08-01
-      East Staffordshire                         380  1995-01-01  2026-08-01
-      East Suffolk                               380  1995-01-01  2026-08-01
-      East Sussex                                380  1995-01-01  2026-08-01
-      East of England                            413  1992-04-01  2026-08-01
-      Eastbourne                                 380  1995-01-01  2026-08-01
-      Eastleigh                                  380  1995-01-01  2026-08-01
-      Elmbridge                                  380  1995-01-01  2026-08-01
-      Enfield                                    380  1995-01-01  2026-08-01
-      England                                    701  1968-04-01  2026-08-01
-      England and Wales                          380  1995-01-01  2026-08-01
-      Epping Forest                              380  1995-01-01  2026-08-01
-      Epsom and Ewell                            380  1995-01-01  2026-08-01
-      Erewash                                    380  1995-01-01  2026-08-01
-      Essex                                      380  1995-01-01  2026-08-01
-      Exeter                                     380  1995-01-01  2026-08-01
-      Falkirk                                    272  2004-01-01  2026-08-01
-      Fareham                                    380  1995-01-01  2026-08-01
-      Fenland                                    380  1995-01-01  2026-08-01
-      Fermanagh and Omagh                        260  2005-01-01  2026-08-01
-      Fife                                       272  2004-01-01  2026-08-01
-      Flintshire                                 380  1995-01-01  2026-08-01
-      Folkestone and Hythe                       380  1995-01-01  2026-08-01
-      Forest of Dean                             380  1995-01-01  2026-08-01
-      Fylde                                      380  1995-01-01  2026-08-01
-      Gateshead                                  380  1995-01-01  2026-08-01
-      Gedling                                    380  1995-01-01  2026-08-01
-      Gloucester                                 380  1995-01-01  2026-08-01
-      Gloucestershire                            380  1995-01-01  2026-08-01
-      Gosport                                    380  1995-01-01  2026-08-01
-      Gravesham                                  380  1995-01-01  2026-08-01
-      Great Britain                              272  2004-01-01  2026-08-01
-      Great Yarmouth                             380  1995-01-01  2026-08-01
-      Greater Manchester                         380  1995-01-01  2026-08-01
-      Greenwich                                  380  1995-01-01  2026-08-01
-      Guildford                                  380  1995-01-01  2026-08-01
-      Gwynedd                                    380  1995-01-01  2026-08-01
-      Hackney                                    380  1995-01-01  2026-08-01
-      Halton                                     380  1995-01-01  2026-08-01
-      Hammersmith and Fulham                     380  1995-01-01  2026-08-01
-      Hampshire                                  380  1995-01-01  2026-08-01
-      Harborough                                 380  1995-01-01  2026-08-01
-      Haringey                                   380  1995-01-01  2026-08-01
-      Harlow                                     380  1995-01-01  2026-08-01
-      Harrow                                     380  1995-01-01  2026-08-01
-      Hart                                       380  1995-01-01  2026-08-01
-      Hartlepool                                 380  1995-01-01  2026-08-01
-      Hastings                                   380  1995-01-01  2026-08-01
-      Havant                                     380  1995-01-01  2026-08-01
-      Havering                                   380  1995-01-01  2026-08-01
-      Herefordshire                              380  1995-01-01  2026-08-01
-      Hertfordshire                              380  1995-01-01  2026-08-01
-      Hertsmere                                  380  1995-01-01  2026-08-01
-      High Peak                                  380  1995-01-01  2026-08-01
-      Highland                                   272  2004-01-01  2026-08-01
-      Hillingdon                                 380  1995-01-01  2026-08-01
-      Hinckley and Bosworth                      380  1995-01-01  2026-08-01
-      Horsham                                    380  1995-01-01  2026-08-01
-      Hounslow                                   380  1995-01-01  2026-08-01
-      Huntingdonshire                            380  1995-01-01  2026-08-01
-      Hyndburn                                   380  1995-01-01  2026-08-01
-      Inner London                               380  1995-01-01  2026-08-01
-      Inverclyde                                 272  2004-01-01  2026-08-01
-      Ipswich                                    380  1995-01-01  2026-08-01
-      Isle of Anglesey                           380  1995-01-01  2026-08-01
-      Isle of Wight                              380  1995-01-01  2026-08-01
-      Islington                                  380  1995-01-01  2026-08-01
-      Kensington and Chelsea                     380  1995-01-01  2026-08-01
-      Kent                                       380  1995-01-01  2026-08-01
-      King's Lynn and West Norfolk               380  1995-01-01  2026-08-01
-      Kingston upon Thames                       380  1995-01-01  2026-08-01
-      Kirklees                                   380  1995-01-01  2026-08-01
-      Knowsley                                   380  1995-01-01  2026-08-01
-      Lambeth                                    380  1995-01-01  2026-08-01
-      Lancashire                                 380  1995-01-01  2026-08-01
-      Lancaster                                  380  1995-01-01  2026-08-01
-      Leeds                                      380  1995-01-01  2026-08-01
-      Leicester                                  380  1995-01-01  2026-08-01
-      Leicestershire                             380  1995-01-01  2026-08-01
-      Lewes                                      380  1995-01-01  2026-08-01
-      Lewisham                                   380  1995-01-01  2026-08-01
-      Lichfield                                  380  1995-01-01  2026-08-01
-      Lincoln                                    380  1995-01-01  2026-08-01
-      Lincolnshire                               380  1995-01-01  2026-08-01
-      Lisburn and Castlereagh                    260  2005-01-01  2026-08-01
-      Liverpool                                  380  1995-01-01  2026-08-01
-      London                                     701  1968-04-01  2026-08-01
-      Luton                                      380  1995-01-01  2026-08-01
-      Maidstone                                  380  1995-01-01  2026-08-01
-      Maldon                                     380  1995-01-01  2026-08-01
-      Malvern Hills                              380  1995-01-01  2026-08-01
-      Manchester                                 380  1995-01-01  2026-08-01
-      Mansfield                                  380  1995-01-01  2026-08-01
-      Medway                                     380  1995-01-01  2026-08-01
-      Melton                                     380  1995-01-01  2026-08-01
-      Merseyside                                 380  1995-01-01  2026-08-01
-      Merthyr Tydfil                             380  1995-01-01  2026-08-01
-      Merton                                     380  1995-01-01  2026-08-01
-      Mid Devon                                  380  1995-01-01  2026-08-01
-      Mid Suffolk                                380  1995-01-01  2026-08-01
-      Mid Sussex                                 380  1995-01-01  2026-08-01
-      Mid Ulster                                 260  2005-01-01  2026-08-01
-      Mid and East Antrim                        260  2005-01-01  2026-08-01
-      Middlesbrough                              380  1995-01-01  2026-08-01
-      Midlothian                                 272  2004-01-01  2026-08-01
-      Milton Keynes                              380  1995-01-01  2026-08-01
-      Mole Valley                                380  1995-01-01  2026-08-01
-      Monmouthshire                              380  1995-01-01  2026-08-01
-      Moray                                      272  2004-01-01  2026-08-01
-      Na h-Eileanan Siar                         272  2004-01-01  2026-08-01
-      Neath Port Talbot                          380  1995-01-01  2026-08-01
-      New Forest                                 380  1995-01-01  2026-08-01
-      Newark and Sherwood                        380  1995-01-01  2026-08-01
-      Newcastle upon Tyne                        380  1995-01-01  2026-08-01
-      Newcastle-under-Lyme                       380  1995-01-01  2026-08-01
-      Newham                                     380  1995-01-01  2026-08-01
-      Newport                                    380  1995-01-01  2026-08-01
-      Newry Mourne and Down                      260  2005-01-01  2026-08-01
-      Norfolk                                    380  1995-01-01  2026-08-01
-      North Ayrshire                             272  2004-01-01  2026-08-01
-      North Devon                                380  1995-01-01  2026-08-01
-      North East                                 413  1992-04-01  2026-08-01
-      North East Derbyshire                      380  1995-01-01  2026-08-01
-      North East Lincolnshire                    380  1995-01-01  2026-08-01
-      North Hertfordshire                        380  1995-01-01  2026-08-01
-      North Kesteven                             380  1995-01-01  2026-08-01
-      North Lanarkshire                          272  2004-01-01  2026-08-01
-      North Lincolnshire                         380  1995-01-01  2026-08-01
-      North Norfolk                              380  1995-01-01  2026-08-01
-      North Northamptonshire                     380  1995-01-01  2026-08-01
-      North Somerset                             380  1995-01-01  2026-08-01
-      North Tyneside                             380  1995-01-01  2026-08-01
-      North Warwickshire                         380  1995-01-01  2026-08-01
-      North West                                 380  1995-01-01  2026-08-01
-      North West Leicestershire                  380  1995-01-01  2026-08-01
-      North Yorkshire                            380  1995-01-01  2026-08-01
-      Northern Ireland                           701  1968-04-01  2026-08-01
-      Northumberland                             380  1995-01-01  2026-08-01
-      Norwich                                    380  1995-01-01  2026-08-01
-      Nottinghamshire                            380  1995-01-01  2026-08-01
-      Nuneaton and Bedworth                      380  1995-01-01  2026-08-01
-      Oadby and Wigston                          380  1995-01-01  2026-08-01
-      Oldham                                     380  1995-01-01  2026-08-01
-      Orkney Islands                             272  2004-01-01  2026-08-01
-      Outer London                               380  1995-01-01  2026-08-01
-      Oxford                                     380  1995-01-01  2026-08-01
-      Oxfordshire                                380  1995-01-01  2026-08-01
-      Pembrokeshire                              380  1995-01-01  2026-08-01
-      Pendle                                     380  1995-01-01  2026-08-01
-      Perth and Kinross                          272  2004-01-01  2026-08-01
-      Portsmouth                                 380  1995-01-01  2026-08-01
-      Powys                                      380  1995-01-01  2026-08-01
-      Preston                                    380  1995-01-01  2026-08-01
-      Reading                                    380  1995-01-01  2026-08-01
-      Redbridge                                  380  1995-01-01  2026-08-01
-      Redcar and Cleveland                       380  1995-01-01  2026-08-01
-      Redditch                                   380  1995-01-01  2026-08-01
-      Reigate and Banstead                       380  1995-01-01  2026-08-01
-      Renfrewshire                               272  2004-01-01  2026-08-01
-      Rhondda Cynon Taf                          380  1995-01-01  2026-08-01
-      Ribble Valley                              380  1995-01-01  2026-08-01
-      Richmond upon Thames                       380  1995-01-01  2026-08-01
-      Rochdale                                   380  1995-01-01  2026-08-01
-      Rochford                                   380  1995-01-01  2026-08-01
-      Rossendale                                 380  1995-01-01  2026-08-01
-      Rother                                     380  1995-01-01  2026-08-01
-      Rotherham                                  380  1995-01-01  2026-08-01
-      Rugby                                      380  1995-01-01  2026-08-01
-      Runnymede                                  380  1995-01-01  2026-08-01
-      Rushcliffe                                 380  1995-01-01  2026-08-01
-      Rushmoor                                   380  1995-01-01  2026-08-01
-      Rutland                                    380  1995-01-01  2026-08-01
-      Salford                                    380  1995-01-01  2026-08-01
-      Sandwell                                   380  1995-01-01  2026-08-01
-      Scotland                                   701  1968-04-01  2026-08-01
-      Scottish Borders                           272  2004-01-01  2026-08-01
-      Sefton                                     380  1995-01-01  2026-08-01
-      Sevenoaks                                  380  1995-01-01  2026-08-01
-      Sheffield                                  380  1995-01-01  2026-08-01
-      Shetland Islands                           272  2004-01-01  2026-08-01
-      Shropshire                                 380  1995-01-01  2026-08-01
-      Slough                                     380  1995-01-01  2026-08-01
-      Solihull                                   380  1995-01-01  2026-08-01
-      Somerset                                   380  1995-01-01  2026-08-01
-      South Ayrshire                             272  2004-01-01  2026-08-01
-      South Cambridgeshire                       380  1995-01-01  2026-08-01
-      South Derbyshire                           380  1995-01-01  2026-08-01
-      South East                                 413  1992-04-01  2026-08-01
-      South Gloucestershire                      380  1995-01-01  2026-08-01
-      South Hams                                 380  1995-01-01  2026-08-01
-      South Holland                              380  1995-01-01  2026-08-01
-      South Kesteven                             380  1995-01-01  2026-08-01
-      South Lanarkshire                          272  2004-01-01  2026-08-01
-      South Norfolk                              380  1995-01-01  2026-08-01
-      South Oxfordshire                          380  1995-01-01  2026-08-01
-      South Ribble                               380  1995-01-01  2026-08-01
-      South Staffordshire                        380  1995-01-01  2026-08-01
-      South Tyneside                             380  1995-01-01  2026-08-01
-      South West                                 701  1968-04-01  2026-08-01
-      South Yorkshire                            380  1995-01-01  2026-08-01
-      Southampton                                380  1995-01-01  2026-08-01
-      Southend-on-Sea                            380  1995-01-01  2026-08-01
-      Southwark                                  380  1995-01-01  2026-08-01
-      Spelthorne                                 380  1995-01-01  2026-08-01
-      St Albans                                  380  1995-01-01  2026-08-01
-      St Helens                                  380  1995-01-01  2026-08-01
-      Stafford                                   380  1995-01-01  2026-08-01
-      Staffordshire                              380  1995-01-01  2026-08-01
-      Staffordshire Moorlands                    380  1995-01-01  2026-08-01
-      Stevenage                                  380  1995-01-01  2026-08-01
-      Stirling                                   272  2004-01-01  2026-08-01
-      Stockport                                  380  1995-01-01  2026-08-01
-      Stockton-on-Tees                           380  1995-01-01  2026-08-01
-      Stoke-on-Trent                             380  1995-01-01  2026-08-01
-      Stratford-on-Avon                          380  1995-01-01  2026-08-01
-      Stroud                                     380  1995-01-01  2026-08-01
-      Suffolk                                    380  1995-01-01  2026-08-01
-      Sunderland                                 380  1995-01-01  2026-08-01
-      Surrey                                     380  1995-01-01  2026-08-01
-      Surrey Heath                               380  1995-01-01  2026-08-01
-      Sutton                                     380  1995-01-01  2026-08-01
-      Swale                                      380  1995-01-01  2026-08-01
-      Swansea                                    380  1995-01-01  2026-08-01
-      Swindon                                    380  1995-01-01  2026-08-01
-      Tameside                                   380  1995-01-01  2026-08-01
-      Tamworth                                   380  1995-01-01  2026-08-01
-      Tandridge                                  380  1995-01-01  2026-08-01
-      Teignbridge                                380  1995-01-01  2026-08-01
-      Telford and Wrekin                         380  1995-01-01  2026-08-01
-      Tendring                                   380  1995-01-01  2026-08-01
-      Test Valley                                380  1995-01-01  2026-08-01
-      Tewkesbury                                 380  1995-01-01  2026-08-01
-      Thanet                                     380  1995-01-01  2026-08-01
-      Three Rivers                               380  1995-01-01  2026-08-01
-      Thurrock                                   380  1995-01-01  2026-08-01
-      Tonbridge and Malling                      380  1995-01-01  2026-08-01
-      Torbay                                     380  1995-01-01  2026-08-01
-      Torfaen                                    380  1995-01-01  2026-08-01
-      Torridge                                   380  1995-01-01  2026-08-01
-      Tower Hamlets                              380  1995-01-01  2026-08-01
-      Trafford                                   380  1995-01-01  2026-08-01
-      Tunbridge Wells                            380  1995-01-01  2026-08-01
-      Tyne and Wear                              380  1995-01-01  2026-08-01
-      United Kingdom                             701  1968-04-01  2026-08-01
-      Uttlesford                                 380  1995-01-01  2026-08-01
-      Vale of Glamorgan                          380  1995-01-01  2026-08-01
-      Vale of White Horse                        380  1995-01-01  2026-08-01
-      Wakefield                                  380  1995-01-01  2026-08-01
-      Wales                                      701  1968-04-01  2026-08-01
-      Walsall                                    380  1995-01-01  2026-08-01
-      Waltham Forest                             380  1995-01-01  2026-08-01
-      Wandsworth                                 380  1995-01-01  2026-08-01
-      Warrington                                 380  1995-01-01  2026-08-01
-      Warwick                                    380  1995-01-01  2026-08-01
-      Warwickshire                               380  1995-01-01  2026-08-01
-      Watford                                    380  1995-01-01  2026-08-01
-      Waverley                                   380  1995-01-01  2026-08-01
-      Wealden                                    380  1995-01-01  2026-08-01
-      Welwyn Hatfield                            380  1995-01-01  2026-08-01
-      West Berkshire                             380  1995-01-01  2026-08-01
-      West Devon                                 380  1995-01-01  2026-08-01
-      West Dunbartonshire                        272  2004-01-01  2026-08-01
-      West Lancashire                            380  1995-01-01  2026-08-01
-      West Lindsey                               380  1995-01-01  2026-08-01
-      West Lothian                               272  2004-01-01  2026-08-01
-      West Midlands                              380  1995-01-01  2026-08-01
-      West Midlands Region                       701  1968-04-01  2026-08-01
-      West Northamptonshire                      380  1995-01-01  2026-08-01
-      West Oxfordshire                           380  1995-01-01  2026-08-01
-      West Suffolk                               380  1995-01-01  2026-08-01
-      West Sussex                                380  1995-01-01  2026-08-01
-      West Yorkshire                             380  1995-01-01  2026-08-01
-      Westmorland and Furness                    380  1995-01-01  2026-08-01
-      Wigan                                      380  1995-01-01  2026-08-01
-      Wiltshire                                  380  1995-01-01  2026-08-01
-      Winchester                                 380  1995-01-01  2026-08-01
-      Windsor and Maidenhead                     380  1995-01-01  2026-08-01
-      Wirral                                     380  1995-01-01  2026-08-01
-      Woking                                     380  1995-01-01  2026-08-01
-      Wokingham                                  380  1995-01-01  2026-08-01
-      Wolverhampton                              380  1995-01-01  2026-08-01
-      Worcester                                  380  1995-01-01  2026-08-01
-      Worcestershire                             380  1995-01-01  2026-08-01
-      Worthing                                   380  1995-01-01  2026-08-01
-      Wrexham                                    380  1995-01-01  2026-08-01
-      Wychavon                                   380  1995-01-01  2026-08-01
-      Wyre                                       380  1995-01-01  2026-08-01
-      Wyre Forest                                380  1995-01-01  2026-08-01
-      York                                       380  1995-01-01  2026-08-01
-      Yorkshire and The Humber                   701  1968-04-01  2026-08-01
 
 
 ## Missing Values
 
 
 ```python
-missing_pct = np.array([np.isnan(data[c]).mean() * 100 for c in num_cols])
+num_cols = [c for c in hpi.dtype.names
+            if np.issubdtype(hpi[c].dtype, np.number)]
+
+missing_pct = np.array([np.isnan(hpi[c]).mean() * 100 for c in num_cols])
 order = np.argsort(missing_pct)[::-1]
  
 print("\n=== MISSING VALUES (%) ===")
@@ -683,7 +294,7 @@ key_cols = [c for c in ("AveragePrice", "Index", "1mChange", "12mChange", "Sales
 print("\n=== DESCRIPTIVE STATISTICS ===")
 print(f"{'column':<20}{'n':>8}{'mean':>14}{'median':>14}{'stdev':>14}{'min':>14}{'max':>14}{'skew':>8}{'kurt':>8}")
 for c in key_cols:
-    x = data[c][~np.isnan(data[c])]
+    x = hpi[c][~np.isnan(hpi[c])]
     if len(x) < 2:
         continue
     v = x.tolist()
@@ -706,7 +317,7 @@ for c in key_cols:
     FlatPrice             145808     122542.30     100863.00      97974.72      15712.00    1330583.00    3.85   25.92
 
 
-# 3. Overview Charts
+# 3. UK HPI - Overview Charts
 
 
 ```python
@@ -732,9 +343,9 @@ style(ax, "Rows per year", "Year", "Rows")
 
 # b) Regions reporting per year
 ax = axes[0, 1]
-regions_per_year = [len(np.unique(data["RegionName"][years == y])) for y in year_list]
+regions_per_year = [len(np.unique(hpi["RegionName"][years == y])) for y in year_list]
 ax.bar(year_list, regions_per_year, width=0.8, color=BLUE)
-style(ax, "Number of regions with data, per year", "Year", "Regions")
+style(ax, "Number of regions with hpi, per year", "Year", "Regions")
  
 # c) Missing values, top 15 columns
 ax = axes[0, 2]
@@ -745,7 +356,7 @@ style(ax, "Most incomplete columns (top 15)", "Missing (%)", "", grid_axis="x")
  
 # d) Distribution of average price
 ax = axes[1, 0]
-price = data["AveragePrice"][~np.isnan(data["AveragePrice"])]
+price = hpi["AveragePrice"][~np.isnan(hpi["AveragePrice"])]
 ax.hist(price, bins=np.logspace(np.log10(price.min()), np.log10(price.max()), 40),
         color=BLUE, edgecolor=BG, linewidth=1)
 ax.set_xscale("log")
@@ -756,18 +367,18 @@ style(ax, "Distribution of AveragePrice (all regions, all months)", "Average pri
 # e) Average price over time for one headline region
 ax = axes[1, 1]
 headline = "United Kingdom" if "United Kingdom" in regions else regions[np.argmax(region_counts)]
-m = data["RegionName"] == headline
-o = np.argsort(data["Date"][m])
-ax.plot(data["Date"][m][o], data["AveragePrice"][m][o], color=BLUE, linewidth=2)
+m = hpi["RegionName"] == headline
+o = np.argsort(hpi["Date"][m])
+ax.plot(hpi["Date"][m][o], hpi["AveragePrice"][m][o], color=BLUE, linewidth=2)
 style(ax, f"AveragePrice over time: {headline}", "Date", "Average price (£)")
  
 # f) Top 10 regions by latest average price
 ax = axes[1, 2]
-latest = data[data["Date"] == data["Date"].max()]
+latest = hpi[hpi["Date"] == hpi["Date"].max()]
 latest = latest[~np.isnan(latest["AveragePrice"])]
 top10 = latest[np.argsort(latest["AveragePrice"])[-10:]]
 ax.barh(top10["RegionName"], top10["AveragePrice"], height=0.7, color=BLUE)
-style(ax, f"Top 10 regions by AveragePrice ({data['Date'].max()})", "Average price (£)", "", grid_axis="x")
+style(ax, f"Top 10 regions by AveragePrice ({hpi['Date'].max()})", "Average price (£)", "", grid_axis="x")
  
 plt.tight_layout()
 plt.show()
@@ -780,9 +391,12 @@ plt.show()
     
 
 
-# 4. Mortgage Rates - IUMBV34
+# 4 Mortgage Rates
+## 4.1 Mortgage Rates - IUMBV34
 
 IUMBV34 data represents the monthly average quoted interest rate for a 2-year fixed-rate mortgage at 75% loan-to-value (LTV)
+
+Data Source: https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp?Travel=NIxSUx&FromSeries=1&ToSeries=50&DAT=ALL&FNY=&CSVF=TT&html.x=234&html.y=51&C=EOT&C=EOW&C=EP0&C=EP3&Filter=N 
 
 
 
@@ -855,6 +469,13 @@ print(iumbv34[:5])
      ('1995-04-30', 8.29) ('1995-05-31', 8.22)]
 
 
+## 4.2 Mortgage Rates - IUMBV42
+
+IUMBV42 data represents the monthly average quoted interest rate for a 2-year fixed-rate mortgage at 75% loan-to-value (LTV).
+
+Data Source: https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp?Travel=NIxSUx&FromSeries=1&ToSeries=50&DAT=RNG&FD=1&FM=Jan&FY=2016&TD=16&TM=Nov&TY=2026&FNY=&CSVF=TT&html.x=212&html.y=37&C=IW&C=NB1&C=EOT&C=U1P&C=U1R&Filter=N
+
+
 
 ```python
 iumbv42 = np.genfromtxt(
@@ -907,6 +528,8 @@ print(iumbv42[:5])
      ('2026-07-31', 4.58) ('2026-06-30', 4.62)]
 
 
+## 4.3 Combine Both Mortgage Rates
+
 
 ```python
 # Find the common dates and their positions in each array
@@ -941,6 +564,1350 @@ print(rates[:5])
     [('2005-01-31', 4.99, 5.2 ) ('2005-02-28', 5.07, 5.25)
      ('2005-03-31', 5.2 , 5.28) ('2005-04-30', 5.16, 5.23)
      ('2005-05-31', 4.91, 5.05)]
+
+
+# 5. RQ Results
+## 5.1 Q1 - Are higher mortgage rates associated with lower annual house price growth?
+
+
+
+
+```python
+# Data Prep - Removed Data before Jan-2005
+columns = np.genfromtxt(
+        fname = file_path,
+        delimiter = ",",
+        dtype = str,
+        max_rows = 1
+    )
+# add a column called = 'Year-Month' to the existing data; create a new array (hpi_new),.
+new_columns_list = hpi.dtype.descr + [("Year-Month", "datetime64[M]")]
+hpi_new = np.empty(hpi.shape, dtype = new_columns_list)
+
+# copy all original columns
+for col in hpi.dtype.names:
+    hpi_new[col] = hpi[col]
+
+# convert Date into Year-Month
+hpi_new["Year-Month"] = hpi["Date"].astype("datetime64[M]")
+
+# replace original array
+hpi = hpi_new
+
+# print(hpi.dtype.names)
+# print(hpi[:5])
+
+# since data Norther Ireland only starts tracking from January 2005, we will filter the data to only include data from January 2005 onwards
+hpi = hpi[hpi["Year-Month"] >= np.datetime64("2005-01")]
+
+hpi_months = hpi["Year-Month"]
+
+
+
+```
+
+
+```python
+# -------------------------
+# Interest Rate Data - Combined the rate2y and rate5y of LTV 75% into one array
+# -------------------------
+# --- rate2y ---    
+rate2y75ltv = np.genfromtxt(
+    fname = file_path_iumbv34,
+    delimiter = ",",
+    dtype = None,
+    skip_header = 1,
+    names = ["Date","Rate2y"],
+    encoding = "utf-8"
+)
+# print(rate2y75ltv[:5])
+# [('31 Jan 1995', 8.13) ('28 Feb 1995', 8.38) ('31 Mar 1995', 8.08) ('30 Apr 1995', 8.29) ('31 May 1995', 8.22)]
+
+'''
+there are two things we need to do to clean the data:
+1. convert the rate to float
+2. change the date format into yyyy-mm-dd format
+'''
+
+# step 1. convert the rate to float
+def convert_to_float(data, column):
+    for i, d in enumerate(data[column]):
+        data[column][i] = float(d)
+    return data
+
+rate2y75ltv = convert_to_float(rate2y75ltv, "Rate2y")
+
+# step 2. change the date into yyyy-mm-dd format
+
+
+month = {
+    "Jan": "01",
+    "Feb": "02",
+    "Mar": "03",
+    "Apr": "04",
+    "May": "05",
+    "Jun": "06",
+    "Jul": "07",
+    "Aug": "08",
+    "Sep": "09",
+    "Oct": "10",
+    "Nov": "11",
+    "Dec": "12"
+}
+
+
+formatted_dates = []
+for d in rate2y75ltv['Date']:
+    day = d.split(" ")[0]
+    mon = month[d.split(" ")[1]]
+    year = d.split(" ")[2]
+
+    formatted_date = f"{year}-{mon}-{day.zfill(2)}"
+    formatted_dates.append(formatted_date)
+
+formatted_dates = np.array(formatted_dates, dtype="datetime64[D]")
+
+rate2y_new_dtype = [
+    ("Date", "datetime64[D]"),
+    ("Rate2y", "f8")
+]
+
+rate2y75ltv_new = np.empty(rate2y75ltv.shape, dtype=rate2y_new_dtype)
+rate2y75ltv_new["Date"] = formatted_dates
+rate2y75ltv_new["Rate2y"] = rate2y75ltv["Rate2y"]
+rate2y75ltv = rate2y75ltv_new
+
+# --- rate5y ---
+
+rate5y75ltv = np.genfromtxt(
+    fname = file_path_iumbv42,
+    delimiter = ",",
+    dtype = None,
+    skip_header = 1,
+    names = ["Date","Rate5y"],
+    encoding = "utf-8"
+)
+# print(rate5y75ltv[:5])
+
+'''
+There are two things we need to do to clean the data:
+1. remove the " from the rate5y datasets & convert the rate to float
+2. change the date format into 20yy-mm-dd format
+'''
+
+# step 1. remove the " from the rate5y datasets & convert the rate to float
+for col in rate5y75ltv.dtype.names:
+    for i, d in enumerate(rate5y75ltv[col]):
+        rate5y75ltv[col][i] = d.strip('"')
+
+rate5y75ltv = convert_to_float(rate5y75ltv, "Rate5y")
+
+# step 2. change the date format into 20yy-mm-dd format
+
+
+#print(rate5y75ltv[:5])
+#[('31 Oct 26', '5.19') ('30 Sep 26', '4.98') ('31 Aug 26', '4.78') ('31 Jul 26', '4.58') ('30 Jun 26', '4.62')]
+formatted_dates_5y = []
+for d in rate5y75ltv['Date']:
+    day = d.split(" ")[0]
+    mon = month[d.split(" ")[1]]
+    year = d.split(" ")[2]
+
+    formatted_date = f"20{year}-{mon}-{day.zfill(2)}"
+    formatted_dates_5y.append(formatted_date)
+
+formatted_dates_5y = np.array(formatted_dates_5y, dtype="datetime64[D]")
+
+rate5y_new_dtype = [
+    ("Date", "datetime64[D]"),
+    ("Rate5y", "f8")
+]
+
+rate5y75ltv_new = np.empty(rate5y75ltv.shape, dtype=rate5y_new_dtype)
+rate5y75ltv_new["Date"] = formatted_dates_5y
+rate5y75ltv_new["Rate5y"] = rate5y75ltv["Rate5y"]
+rate5y75ltv = rate5y75ltv_new
+
+# --- combining both rates ---
+
+common_dates, idx_rate2y, idx_rate5y = np.intersect1d(
+    rate2y75ltv["Date"], rate5y75ltv["Date"], return_indices = True
+)
+
+rates = np.empty(
+    common_dates.shape[0],
+    dtype=[
+        ("Date", "datetime64[D]"),
+        ("Rate2y", "f8"),
+        ("Rate5y", "f8"),
+        ("Year-Month", "datetime64[M]")
+    ]
+)
+
+# Assign the values
+rates["Date"] = common_dates
+rates["Rate2y"] = rate2y75ltv["Rate2y"][idx_rate2y]
+rates["Rate5y"] = rate5y75ltv["Rate5y"][idx_rate5y]
+rates["Year-Month"] = rates["Date"].astype("datetime64[M]")
+
+rate_months = rates["Date"].astype("datetime64[M]")
+```
+
+
+```python
+# def - copied from main script
+def build_series(country, rate_name, start, end):
+    in_country = hpi["RegionName"] == country
+    months = hpi_months[in_country]
+    growth = hpi["12mChange"][in_country]
+
+    # Match house price growth and mortgage rate on the month
+    common, idx_hpi, idx_rate = np.intersect1d(
+        months, rate_months, return_indices = True
+    )
+    growth = growth[idx_hpi]
+    rate = rates[rate_name][idx_rate]
+
+    # Keep the chosen period and drop missing values
+    keep = (
+        (common >= start) & (common <= end)
+        & ~np.isnan(growth) & ~np.isnan(rate)
+    )
+    return common[keep], growth[keep], rate[keep]
+
+```
+
+
+```python
+SUMMARY_START = np.datetime64("2005-01")
+SUMMARY_END = hpi["Year-Month"].max()
+SUMMARY_COUNTRIES = ["England", "Scotland", "Wales", "Northern Ireland",
+                     "United Kingdom"]
+
+def run_q1():
+
+    # Introduction
+
+    print("\n" + "=" * 65)
+    print("Q1 | Mortgage Interest Rates and House Price Growth Relationship")
+    print("=" * 65)
+
+    print("> Research Question:")
+    print("Are higher mortgage interest rates associated with lower")
+    print("annual house price growth?")
+
+
+    print("\n> About this analysis")
+    print("This program examines the relationship between mortgage")
+    print("interest rates and annual house price growth in the UK.")
+    print("It uses descriptive statistics and Pearson correlation to analyze the relationship.")
+
+    print("\n> You will be asked to select:")
+    print("1. A UK Region (England, Wales, northern Ireland, Scotland, United Kingdom")
+    print("2. Choose between 2-year and 5-year 75% LTV fixed mortgage interest rates")
+    print("3. A start and end month for the analysis")
+
+    print("\n")
+    
+    # Choose Region
+    countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
+    country_answer = ask_option("Choose the region you want to analyse:", countries)
+
+    # Choose Mortgage Rate (2y or 5y) to analyze.
+    rates = ["rate2y", "rate5y"]
+    rate_answer = ask_option("Choose term of the mortgage rate:", ["Rate2y", "Rate5y"])
+
+    # Ask Start-Month
+    start_month = ask_year_month("Determine the start month for analysis (YYYY-MM) >= January 2005: ")
+    end_month = ask_year_month("Determine the end month for analysis (YYYY-MM): ")
+
+    months, growth, rate = build_series(country_answer, rate_answer, start_month, end_month)
+
+    print("\n=== SELECTION ===")
+    print("Country      :", country_answer)
+    print("Mortgage rate:", rate_answer)
+    print("Months used  :", months.shape[0])
+
+    if months.shape[0] < 3:
+        print("Not enough data for this selection. Choose a wider period.")
+    else:
+        print("Date range   :", months.min(), "to", months.max())
+        print("\n=== RQ1: Are higher mortgage interest rates associated with lower annual house price growth? ===")
+
+        print("--- Descriptive statistics ---")
+        # Mortgage Interest Rate
+        print("Mortgage Interest Rate:", rate_answer)
+        print("Mean:", round(statistics.mean(rate), 2))
+        print("Median:", round(statistics.median(rate), 2))
+        print("Standard Deviation:", round(statistics.stdev(rate), 2))
+        
+        # House Price Growth
+        print("\nHouse Price Growth (12mChange)")
+        print("Mean:", round(statistics.mean(growth), 2))
+        print("Median:", round(statistics.median(growth), 2))
+        print("Standard Deviation:", round(statistics.stdev(growth), 2))
+
+        pearson = stats.pearsonr(rate, growth)
+        spearman = stats.spearmanr(rate, growth)
+        fit = stats.linregress(rate, growth)
+    
+        print("--- Association ---")
+        print(f"Pearson r    : {pearson.statistic:.3f} (p = {pearson.pvalue:.4f})")
+    
+        
+        print("--- Pearson Correlation ---")
+        print(f"r = {pearson.statistic:.3f}")
+        print(f"p-value = {pearson.pvalue:.4f}")
+        
+        if pearson.pvalue >= 0.05:
+            print("Result: No statistifically significant linear relationship")
+            print("Hence, there is not enough statistical evidence to conclude that mortgage interest rates are linearly related to house price growth.")
+        elif pearson.statistic < 0:
+            print("Result: Significant negative linear relationship.")
+            print("Higher mortgage interest rates tend to be associated with lower annual house price growth.")
+            print("Note - this relationship is statistifically siginificant at the 5% level.")
+        else:
+            print("Result: Significant positive linear relationship.")
+            print("Higher mortgage interest rate tend to be associated with higher annual house price growth")
+            print("Note - this relationship is statistifically siginificant at the 5% level.")
+
+        plt.scatter(rate, growth)
+
+        line_x = np.linspace(rate.min(), rate.max(), 100)
+        line_y = fit.intercept + fit.slope * line_x
+        
+        plt.plot(line_x, line_y, color="red")
+        
+        plt.xlabel("Mortgage interest rate (%)")
+        plt.ylabel("Annual house price growth (%)")
+        plt.title("Mortgage Rates vs House Price Growth")
+        
+        plt.show()
+                
+
+
+
+```
+
+
+```python
+print("RQ1 | Are higher mortgage rates associated with lower annual house price growth?")
+print("Country | Rate | Months | r | p-value | Slope | Result")
+
+start = np.datetime64("2005-01")
+end = hpi["Year-Month"].max()
+
+for rate_name in ["Rate2y", "Rate5y"]:
+    for country in ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]:
+
+        months, growth, rate = build_series(country, rate_name, start, end)
+
+        pearson = stats.pearsonr(rate, growth)
+        fit = stats.linregress(rate, growth)
+
+        r = round(pearson.statistic, 3)
+        p = round(pearson.pvalue, 4)
+        slope = round(fit.slope, 2)
+
+        if p >= 0.05:
+            result = "not significant"
+        elif r < 0:
+            result = "significant negative"
+        else:
+            result = "significant positive"
+
+        print(country, "|", rate_name, "|", len(months), "|", r, "|", p, "|", slope, "|", result)
+```
+
+    RQ1 | Are higher mortgage rates associated with lower annual house price growth?
+    Country | Rate | Months | r | p-value | Slope | Result
+    England | Rate2y | 260 | -0.184 | 0.0029 | -0.62 | significant negative
+    Scotland | Rate2y | 260 | 0.152 | 0.0144 | 0.59 | significant positive
+    Wales | Rate2y | 260 | -0.162 | 0.0089 | -0.59 | significant negative
+    Northern Ireland | Rate2y | 260 | 0.127 | 0.0405 | 1.16 | significant positive
+    United Kingdom | Rate2y | 260 | -0.161 | 0.0094 | -0.54 | significant negative
+    England | Rate5y | 260 | -0.186 | 0.0027 | -0.67 | significant negative
+    Scotland | Rate5y | 260 | 0.068 | 0.2718 | 0.29 | not significant
+    Wales | Rate5y | 260 | -0.259 | 0.0 | -1.02 | significant negative
+    Northern Ireland | Rate5y | 260 | 0.015 | 0.805 | 0.15 | not significant
+    United Kingdom | Rate5y | 260 | -0.182 | 0.0032 | -0.66 | significant negative
+
+
+
+```python
+print("=" * 75)
+print("RQ2 | How do price gaps and new-build premiums differ between areas?")
+print("=" * 75)
+print("Area | Months | Avg gap (£) | Avg premium (%) | First 12m (%) | Last 12m (%) | Change")
+
+for area in ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]:
+
+    rows = hpi[hpi["RegionName"] == area]
+    new_price = rows["NewPrice"]
+    old_price = rows["OldPrice"]
+
+    # keep only the month where both prices exist
+    valid = (new_price > 0) & (old_price > 0)
+    new_price = new_price[valid]
+    old_price = old_price[valid]
+
+    gap = new_price - old_price
+    premium = gap / old_price * 100
+
+    average_gap = round(gap.mean())
+    average_premium = round(premium.mean(), 1)
+    first_12 = round(premium[:12].mean(), 1)
+    last_12 = round(premium[-12:].mean(), 1)
+    change = round(last_12 - first_12, 1)
+
+    print(area, "|", len(gap), "|", average_gap, "|", average_premium, "|", first_12, "|", last_12, "|", change)
+```
+
+    ===========================================================================
+    RQ2 | How do price gaps and new-build premiums differ between areas?
+    ===========================================================================
+    Area | Months | Avg gap (£) | Avg premium (%) | First 12m (%) | Last 12m (%) | Change
+    England | 258 | 55332 | 26.3 | 31.1 | 31.7 | 0.6
+    Scotland | 258 | 82350 | 60.8 | 60.7 | 73.7 | 13.0
+    Wales | 258 | 72659 | 48.6 | 52.9 | 55.2 | 2.3
+    Northern Ireland | 258 | 35979 | 26.8 | 19.5 | 31.4 | 11.9
+    United Kingdom | 258 | 50217 | 25.9 | 29.5 | 32.1 | 2.6
+
+
+RQ3 - Price Volatility
+
+
+```python
+print("=" * 75)
+print("RQ3 | Price Volatility in the UK?")
+print("=" * 75)
+def ask_option(question, choices):
+    print(question)
+    for i, choice in enumerate(choices, start = 1):
+        print(f"  {i}.  {choice}")
+    while True:
+        answer = input("Input your choice: ").strip()
+        if answer.isdigit() and 1 <= int(answer) <= len(choices):
+            return choices[int(answer) - 1]
+        print("Invalid choice, please try again...")
+def run_q3():
+    #Introduction
+    print("\n" + "=" * 65)
+    print("Q3 | Monthly House Price Volatility")
+    print("=" * 65)
+
+    print("\n> Research Question:")
+    print("Which UK regions had the most volatile monthly house price")
+    print("changes over a period selected by the user?")
+
+    print("\n> About this analysis")
+    print("This analysis uses monthly data from the UK House Price Index")
+    print("(HPI) to compare house price changes across local areas.")
+    print("It calculates the standard deviation of monthly percentage")
+    print("changes to identify areas with higher and lower volatility.")
+    print("A higher standard deviation indicates greater price fluctuations.")
+
+    print("\n> You will be asked to select:")
+    print("1. England, Scotland, Wales, Northern Ireland or United Kingdom")
+    print("2. A start year and an end year for the analysis")
+
+    #Use the HPI dataset already loaded by the group (from 2005 onward).
+    #NumPy changes the CSV heading "1m%Change" to "1mChange".
+    #Keep the four columns in the same order as the original Q3.
+    monthly_change = hpi["1mChange"]
+    change_text = np.where(np.isfinite(monthly_change),
+                           monthly_change.astype(str), "")
+    data = np.column_stack((
+        hpi["Date"].astype(str),
+        hpi["RegionName"],
+        hpi["AreaCode"],
+        change_text
+    ))
+
+    print("\n" + "-" * 65)
+    print("1. Choose a UK country")
+    print("" + "-" * 65)
+    
+    #Ask users to choose an area
+    countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
+
+    selected_country = ask_option(
+        "Choose the region you want to analyse:",
+        countries
+    )
+
+    #AreaCode prefixes for local authority areas
+    area_codes = {
+        "England": ("E06", "E07", "E08", "E09"),
+        "Scotland": ("S12",),
+        "Wales": ("W06",),
+        "Northern Ireland": ("N09",)
+    }
+    print("\n" + "-" * 65)
+    print("2. Choose a start year and an end year for the analysis")
+    print("" + "-" * 65)
+    
+    #Ask users to select a time period
+    start_text = input("Enter the start year(2005 onwards): ").strip()
+    end_text = input("Enter the end year(2005 onwards): ").strip()
+
+    if not start_text.isdigit() or not end_text.isdigit():
+        print("Please enter whole numbers for the years.")
+        return
+
+    start_year = int(start_text)
+    end_year = int(end_text)
+
+    if start_year < 2005:
+        print("The data starts in 2005. Please choose 2005 or later.")
+        return
+
+    if start_year > end_year:
+        print("The start year must not be later than the end year.")
+        return
+
+    print("\n" + "-" * 65)
+    print(f"Volatility Analysis for {selected_country} between {start_year} and {end_year}")
+    print("" + "-" * 65)
+
+    print("Selected country:", selected_country)
+    print("Select period:", start_year, "to", end_year)
+
+    #Get the AreaCode prefixes for the selected country
+    if selected_country == "United Kingdom":
+        selected_prefixes = (
+            "E06", "E07", "E08", "E09",
+            "S12", "W06", "N09"
+        )
+    else:
+        selected_prefixes = area_codes[selected_country]
+
+    #Keep all UK data for the four-country comparison
+    uk_data = []
+
+    for i in range(data.shape[0]):
+        year = int(data[i, 0][:4])
+
+        if start_year <= year <= end_year:
+            uk_data.append(data[i])
+    
+    #filter the data by year
+    filtered_data = []
+
+    for i in range(data.shape[0]):
+        year = int(data[i, 0][:4])
+        area_code = data[i, 2]
+
+        if start_year <= year <= end_year:
+            if area_code.startswith(selected_prefixes):
+                filtered_data.append(data[i])
+
+    #check for missing values
+    valid_data = []
+    valid_count = 0
+    missing_count = 0
+
+    for row in filtered_data:
+        change_text = row[3].strip()
+
+        if change_text == "":
+            missing_count = missing_count + 1
+        else:
+            valid_data.append(row)
+            valid_count = valid_count +1
+    
+    print("Number of records:", len(filtered_data))
+    print("Valid monthly changes:", valid_count)
+    print("Missing monthly changes:", missing_count)
+    if valid_count == 0:
+        print("No valid data found for the selected years.")
+        return
+
+    #Get the region names
+    region_names = []
+
+    for row in valid_data:
+        if row[1] not in region_names:
+            region_names.append(row[1])
+
+    print()
+    print("Number of regions:", len(region_names))
+
+    #calculate average change and standard deviation
+    region_results = []
+
+    for region in region_names:
+        change_values = []
+
+        for row in valid_data:
+            if row[1] == region:
+                change_value = float(row[3])
+                change_values.append(change_value)
+
+        if len(change_values) > 1:
+            average_change = statistics.mean(change_values)
+            standard_deviation = statistics.stdev(change_values)
+            
+            region_results.append([
+                str(region),
+                average_change,
+                standard_deviation
+            ])
+    
+    #Select local authority areas across the UK
+    local_area_names = []
+
+    area_prefixes = ("E06", "E07", "E08", "E09","S12", "W06", "N09")
+
+    for row in valid_data:
+        if row[2].startswith(area_prefixes):
+            if row[1] not in local_area_names:
+                local_area_names.append(row[1])
+
+    local_region_results = []
+
+    for result in region_results:
+        if result[0] in local_area_names:
+            local_region_results.append(result)
+
+    #Show regions with the highest volatility
+    print()
+    local_region_results.sort(key=lambda x: x[2], reverse=True)
+
+    print("Regions with the highest price volatility:")
+
+    for i in range(min(5, len(local_region_results))):
+        result = local_region_results[i]
+        print(f"{i + 1}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
+
+    #Show regions with the lowest volatility
+    local_region_results.sort(key=lambda x: x[2])
+
+    print()
+    print("Regions with the lowest price volatility:")
+    
+    for i in range(min(5, len(local_region_results))):
+        result = local_region_results[i]
+        print(f"{i + 1}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
+
+    #Compare the four UK countries
+    four_countries = ["England", "Scotland", "Wales", "Northern Ireland"]
+
+    country_results = []
+
+    for country in four_countries:
+        change_values = []
+
+        for row in uk_data:
+            if row[1] == country and row[3].strip() != "":
+                change_values.append(float(row[3]))
+
+        if len(change_values) > 1:
+            average_change = statistics.mean(change_values)
+            standard_deviation = statistics.stdev(change_values)
+
+            country_results.append([
+                country,
+                average_change,
+                standard_deviation
+            ])
+
+    if len(country_results) < 4:
+        print("Note: Not all four countries have enough data.")
+
+    print()
+    print("Price volatility in the four UK countries:")
+
+    for i, result in enumerate(country_results, 1):
+        print(f"\n{i}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
+
+    #Draw the bar chart
+    country_names = []
+    country_volatility = []
+
+    for result in country_results:
+        country_names.append(result[0])
+        country_volatility.append(result[2])
+
+    if not country_names:
+        print("No country data available to plot.")
+        return
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(country_names, country_volatility)
+
+    plt.title("House Price Volatility in the UK Countries")
+    plt.xlabel("Country")
+    plt.ylabel("Standard Deviation")
+
+    plt.xticks(rotation=15)
+    plt.tight_layout()
+    plt.show()
+
+run_q3()
+```
+
+    ===========================================================================
+    RQ3 | Price Volatility in the UK?
+    ===========================================================================
+    
+    =================================================================
+    Q3 | Monthly House Price Volatility
+    =================================================================
+    
+    > Research Question:
+    Which UK regions had the most volatile monthly house price
+    changes over a period selected by the user?
+    
+    > About this analysis
+    This analysis uses monthly data from the UK House Price Index
+    (HPI) to compare house price changes across local areas.
+    It calculates the standard deviation of monthly percentage
+    changes to identify areas with higher and lower volatility.
+    A higher standard deviation indicates greater price fluctuations.
+    
+    > You will be asked to select:
+    1. England, Scotland, Wales, Northern Ireland or United Kingdom
+    2. A start year and an end year for the analysis
+    
+    -----------------------------------------------------------------
+    1. Choose a UK country
+    -----------------------------------------------------------------
+    Choose the region you want to analyse:
+      1.  England
+      2.  Scotland
+      3.  Wales
+      4.  Northern Ireland
+      5.  United Kingdom
+
+
+    Input your choice:  5
+
+
+    
+    -----------------------------------------------------------------
+    2. Choose a start year and an end year for the analysis
+    -----------------------------------------------------------------
+
+
+    Enter the start year(2005 onwards):  2005
+    Enter the end year(2005 onwards):  2026
+
+
+    
+    -----------------------------------------------------------------
+    Volatility Analysis for United Kingdom between 2005 and 2026
+    -----------------------------------------------------------------
+    Selected country: United Kingdom
+    Select period: 2005 to 2026
+    Number of records: 93600
+    Valid monthly changes: 93567
+    Missing monthly changes: 33
+    
+    Number of regions: 360
+    
+    Regions with the highest price volatility:
+    1. Shetland Islands
+       Average monthly change: 0.752%
+       Standard deviation: 7.353
+    2. Na h-Eileanan Siar
+       Average monthly change: 0.555%
+       Standard deviation: 6.544
+    3. Orkney Islands
+       Average monthly change: 0.591%
+       Standard deviation: 5.653
+    4. City of London
+       Average monthly change: 0.455%
+       Standard deviation: 5.473
+    5. Fermanagh and Omagh
+       Average monthly change: 0.932%
+       Standard deviation: 4.887
+    
+    Regions with the lowest price volatility:
+    1. Somerset
+       Average monthly change: 0.210%
+       Standard deviation: 0.829
+    2. North Yorkshire
+       Average monthly change: 0.179%
+       Standard deviation: 0.866
+    3. Stockport
+       Average monthly change: 0.287%
+       Standard deviation: 0.880
+    4. Cardiff
+       Average monthly change: 0.236%
+       Standard deviation: 0.895
+    5. Birmingham
+       Average monthly change: 0.235%
+       Standard deviation: 0.899
+    
+    Price volatility in the four UK countries:
+    
+    1. England
+       Average monthly change: 0.265%
+       Standard deviation: 1.041
+    
+    2. Scotland
+       Average monthly change: 0.301%
+       Standard deviation: 1.717
+    
+    3. Wales
+       Average monthly change: 0.251%
+       Standard deviation: 1.437
+    
+    4. Northern Ireland
+       Average monthly change: 0.890%
+       Standard deviation: 3.925
+
+
+
+    
+![png](README_files/README_32_5.png)
+    
+
+
+# RQ 4 - Building Types
+
+
+```python
+# ============================================================
+# RQ4: How have house prices changed across property types in a selected region and period?
+# ============================================================
+  
+def choose_region(prompt, region_names):
+    while True:
+        search = input(prompt).strip().lower()
+
+        if search == "":
+            print("Please enter a region name.")
+            continue
+
+        matches = []
+
+        for name in region_names:
+            if search == name.lower():
+                return name
+
+            if search in name.lower():
+                matches.append(name)
+
+        if len(matches) == 1:
+            print("Matched region:", matches[0])
+            return matches[0]
+
+        if len(matches) > 1:
+            print("Multiple regions match. Please enter a more specific name:")
+            for name in matches:
+                print("-", name)
+        else:
+            print("No matching region found. Please try again.")
+def ask_year_month(question):
+    while True:
+        answer_year_month = input(question).strip()
+        if not(
+            len(answer_year_month) == 7 and answer_year_month[4] == "-"
+            and answer_year_month[:4].isdigit() and answer_year_month[5:].isdigit()):
+            print("Use the format YYYY-MM, e.g. 2015-01.")
+            
+        elif int(answer_year_month[:4]) < 2005:
+            print("The data starts in 2005-01. Please enter 2005-01 or later.")
+        elif not 1 <= int(answer_year_month[5:]) <= 12:
+            print("The month must be between 01 and 12.")
+        else:
+            return np.datetime64(answer_year_month, "M")
+def read_price(text):
+    """Return a number, or None if the price is missing or invalid."""
+    try:
+        price = float(text)
+    except (TypeError, ValueError):
+        return None
+
+    return price if np.isfinite(price) else None
+
+def run_q4():
+    print("\n" + "=" * 65)
+    print("Q4 | Property Type Comparison")
+    print("=" * 65)
+
+    print("> Research Question:")
+    print("Which property type had the largest percentage change in")
+    print("average price in the selected region and period?")
+
+    print("\n> About this analysis")
+    print("This analysis uses UK House Price Index data to compare")
+    print("detached houses, semi-detached houses, terraced houses and flats.")
+    print("The line chart shows monthly price trends, and the bar chart")
+    print("shows the percentage change from the start to the end month.")
+
+    print("\n> You will be asked to select:")
+    print("1. A Region in UK")
+    print("   - a country, e.g. England, Scotland, Wales, Northern Ireland")
+    print("   - a region, e.g. London, North East, South West")
+    print("   - a local area, e.g. Aberdeenshire, City of Edinburgh, Manchester")
+    print("   You can type part of a name (e.g. 'edin'). If more than one")
+    print("   area matches, you will be shown the list and asked again.")
+    print("2. A start and end month for the analysis (YYYY-MM)")
+    print("3. One or more property types to compare")
+    print("4. A chart view (relative growth or prices in pounds)")
+    print()
+    
+    # Set the price columns for each property type
+    price_columns = {
+        "DetachedPrice": "Detached",
+        "SemiDetachedPrice": "Semi-detached",
+        "TerracedPrice": "Terraced",
+        "FlatPrice": "Flat",
+    }
+
+    print("\n" + "-" * 65)
+    print("1. Choose a region in UK.")
+    print("" + "-" * 65)
+    region_names = sorted({row["RegionName"] for row in hpi})
+
+    region = choose_region("Region: ", region_names)
+
+    
+
+    # Ask the user to choose a region
+    # region = input("Region: ").strip() or "Scotland"
+
+    # Read prices for the selected region, grouped by month.
+    prices = {}
+
+    # Use the shared HPI data to get prices for the selected region.
+    for row in hpi:
+        if row["RegionName"] != region:
+            continue
+    
+        month = row["Year-Month"]
+    
+        prices[month] = {}
+    
+        for column, name in price_columns.items():
+            prices[month][name] = read_price(row[column])
+
+    if not prices:
+        print("Region not found. Try Scotland, England, or London.")
+        return
+    
+    # Ask Start-Month
+    print("\n" + "-" * 65)
+    print("3. Choose the start month and end month")
+    print("" + "-" * 65)
+
+    print("Type each month as YYYY-MM, for example 2015-06 for June 2015.")
+    print("- The start month must be 2005-01 or later.")
+    print("- The end month must not be earlier than the start month.")
+
+    while True:
+        start = ask_year_month("Determine the start month for analysis: ")
+        end = ask_year_month("Determine the end month for analysis: ")
+        
+        if start >= end:
+            print("The end month must be after the start month.")
+        elif start not in prices or end not in prices:
+            print(f"{region} has no data for one or both selected months.")
+        else:
+            break
+
+
+	# Ask which property types to compare
+    print("\n" + "-" * 65)
+    print("3. Choose property types to compare.")
+    print("" + "-" * 65)
+    options = dict(zip(["1", "2", "3", "4"], price_columns.values()))
+    print("1. Detached  2. Semi-detached  3. Terraced  4. Flat")
+
+    choice = input("Property types (e.g. 1,4): ").strip()
+    numbers = [item.strip() for item in choice.split(",")] if choice else list(options)
+
+    if any(number not in options for number in numbers):
+        print("Please select property types using numbers 1 to 4.")
+        return
+   
+    # Calculate the change in pounds and as a percentage
+    
+    print("\n" + "-" * 65)
+    print("4. Choose a chart view (relative growth or prices in pounds).")
+    print("" + "-" * 65)
+    
+    property_types = [options[number] for number in dict.fromkeys(numbers)]
+    view = input("Chart view (1 = relative growth, 2 = price in £): ").strip() or "1"
+
+    if view not in {"1", "2"}:
+        print("Please enter 1 or 2 for the chart view.")
+        return
+
+    # Use the same result rows for the printed table, charts.
+    results = []
+    missing_types = []
+
+    for name in property_types:
+        start_price = prices[start][name]
+        end_price = prices[end][name]
+
+        if start_price is None or end_price is None or start_price <= 0:
+            missing_types.append(name)
+            continue
+
+        change = end_price - start_price
+        change_pct = change / start_price * 100
+        results.append((name, start_price, end_price, change, change_pct))
+
+    if missing_types:
+        print("Missing or invalid endpoint prices:", ", ".join(missing_types))
+
+    if not results:
+        print("No selected property type has usable prices for both months.")
+        return
+
+    results.sort(key=lambda row: row[4], reverse=True)
+
+    headers = ("Property type", "Start price (£)", "End price (£)", "Change (£)", "Change (%)")
+
+    print(f"\n{region} | {start} to {end}")
+    print(f"{headers[0]:<16} {headers[1]:>16} {headers[2]:>16} "
+          f"{headers[3]:>14} {headers[4]:>12}")
+
+    for name, start_price, end_price, change, change_pct in results:
+        print(f"{name:<16} {start_price:>16,.2f} {end_price:>16,.2f} "
+              f"{change:>14,.2f} {change_pct:>12.2f}")
+
+    colors = {
+        "Detached": "#355C9A",
+        "Semi-detached": "#258277",
+        "Terraced": "#BC5B20",
+        "Flat": "#8064A2",
+    }
+
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(12, 5), gridspec_kw={"width_ratios": [1.6, 1]}
+    )
+
+    months = sorted(month for month in prices if start <= month <= end)
+
+    for name, start_price, *_ in results:
+        monthly_prices = [prices[month][name] for month in months]
+
+        if view == "1":
+            monthly_prices = [
+                price / start_price * 100 if price is not None else None
+                for price in monthly_prices
+            ]
+
+        left.plot(months, monthly_prices, label=name, color=colors[name], linewidth=2)
+
+    if view == "1":
+        left.axhline(100, color="grey", linestyle="--", linewidth=1)
+
+    left.set_title("Monthly price trends", loc="left")
+    left.set_ylabel("Index (start month = 100)" if view == "1" else "Average price (£)")
+    left.legend(frameon=False)
+    left.grid(axis="y", alpha=0.2)
+
+    # Draw in reverse order so the largest change appears at the top.
+    chart_rows = list(reversed(results))
+    names = [row[0] for row in chart_rows]
+    changes = [row[4] for row in chart_rows]
+
+    bars = right.barh(names, changes, color=[colors[name] for name in names])
+    right.bar_label(bars, labels=[f"{value:+.1f}%" for value in changes], padding=4)
+    right.axvline(0, color="grey", linewidth=1)
+    right.margins(x=0.25)
+    right.set_title("Cumulative price change", loc="left")
+    right.set_xlabel("Change over selected period (%)")
+
+    fig.suptitle(f"{region} | {start} to {end}", fontweight="bold")
+    fig.tight_layout()
+    plt.show()
+
+run_q4()
+```
+
+    
+    =================================================================
+    Q4 | Property Type Comparison
+    =================================================================
+    > Research Question:
+    Which property type had the largest percentage change in
+    average price in the selected region and period?
+    
+    > About this analysis
+    This analysis uses UK House Price Index data to compare
+    detached houses, semi-detached houses, terraced houses and flats.
+    The line chart shows monthly price trends, and the bar chart
+    shows the percentage change from the start to the end month.
+    
+    > You will be asked to select:
+    1. A Region in UK
+       - a country, e.g. England, Scotland, Wales, Northern Ireland
+       - a region, e.g. London, North East, South West
+       - a local area, e.g. Aberdeenshire, City of Edinburgh, Manchester
+       You can type part of a name (e.g. 'edin'). If more than one
+       area matches, you will be shown the list and asked again.
+    2. A start and end month for the analysis (YYYY-MM)
+    3. One or more property types to compare
+    4. A chart view (relative growth or prices in pounds)
+    
+    
+    -----------------------------------------------------------------
+    1. Choose a region in UK.
+    -----------------------------------------------------------------
+
+
+    Region:  United Kingdom
+
+
+    
+    -----------------------------------------------------------------
+    3. Choose the start month and end month
+    -----------------------------------------------------------------
+    Type each month as YYYY-MM, for example 2015-06 for June 2015.
+    - The start month must be 2005-01 or later.
+    - The end month must not be earlier than the start month.
+
+
+    Determine the start month for analysis:  2005-01
+    Determine the end month for analysis:  2026-08
+
+
+    
+    -----------------------------------------------------------------
+    3. Choose property types to compare.
+    -----------------------------------------------------------------
+    1. Detached  2. Semi-detached  3. Terraced  4. Flat
+
+
+    Property types (e.g. 1,4):  1,2,3,4
+
+
+    
+    -----------------------------------------------------------------
+    4. Choose a chart view (relative growth or prices in pounds).
+    -----------------------------------------------------------------
+
+
+    Chart view (1 = relative growth, 2 = price in £):  1
+
+
+    
+    United Kingdom | 2005-01 to 2026-08
+    Property type     Start price (£)    End price (£)     Change (£)   Change (%)
+    Terraced               110,564.00       232,505.00     121,941.00       110.29
+    Semi-detached          138,860.00       278,675.00     139,815.00       100.69
+    Detached               233,758.00       443,846.00     210,088.00        89.87
+    Flat                   107,188.00       194,148.00      86,960.00        81.13
+
+
+
+    
+![png](README_files/README_34_9.png)
+    
+
+
+
+```python
+!jupyter nbconvert --to markdown python_notebook/Descriptive Statistics.ipynb --output README
+```
+
+    [NbConvertApp] WARNING | pattern 'python_notebook/Descriptive' matched no files
+    [NbConvertApp] WARNING | pattern 'Statistics.ipynb' matched no files
+    This application is used to convert notebook files (*.ipynb)
+            to various other formats.
+    
+            WARNING: THE COMMANDLINE INTERFACE MAY CHANGE IN FUTURE RELEASES.
+    
+    Options
+    =======
+    The options below are convenience aliases to configurable class-options,
+    as listed in the "Equivalent to" description-line of the aliases.
+    To see all configurable class-options for some <cmd>, use:
+        <cmd> --help-all
+    
+    --debug
+        set log level to logging.DEBUG (maximize logging output)
+        Equivalent to: [--Application.log_level=10]
+    --show-config
+        Show the application's configuration (human-readable format)
+        Equivalent to: [--Application.show_config=True]
+    --show-config-json
+        Show the application's configuration (json format)
+        Equivalent to: [--Application.show_config_json=True]
+    --generate-config
+        generate default config file
+        Equivalent to: [--JupyterApp.generate_config=True]
+    -y
+        Answer yes to any questions instead of prompting.
+        Equivalent to: [--JupyterApp.answer_yes=True]
+    --execute
+        Execute the notebook prior to export.
+        Equivalent to: [--ExecutePreprocessor.enabled=True]
+    --allow-errors
+        Continue notebook execution even if one of the cells throws an error and include the error message in the cell output (the default behaviour is to abort conversion). This flag is only relevant if '--execute' was specified, too.
+        Equivalent to: [--ExecutePreprocessor.allow_errors=True]
+    --stdin
+        read a single notebook file from stdin. Write the resulting notebook with default basename 'notebook.*'
+        Equivalent to: [--NbConvertApp.from_stdin=True]
+    --stdout
+        Write notebook output to stdout instead of files.
+        Equivalent to: [--NbConvertApp.writer_class=StdoutWriter]
+    --inplace
+        Run nbconvert in place, overwriting the existing notebook (only
+                relevant when converting to notebook format)
+        Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory=]
+    --clear-output
+        Clear output of current file and save in place,
+                overwriting the existing notebook.
+        Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory= --ClearOutputPreprocessor.enabled=True]
+    --coalesce-streams
+        Coalesce consecutive stdout and stderr outputs into one stream (within each cell).
+        Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory= --CoalesceStreamsPreprocessor.enabled=True]
+    --no-prompt
+        Exclude input and output prompts from converted document.
+        Equivalent to: [--TemplateExporter.exclude_input_prompt=True --TemplateExporter.exclude_output_prompt=True]
+    --no-input
+        Exclude input cells and output prompts from converted document.
+                This mode is ideal for generating code-free reports.
+        Equivalent to: [--TemplateExporter.exclude_output_prompt=True --TemplateExporter.exclude_input=True --TemplateExporter.exclude_input_prompt=True]
+    --allow-chromium-download
+        Whether to allow downloading chromium if no suitable version is found on the system.
+        Equivalent to: [--WebPDFExporter.allow_chromium_download=True]
+    --disable-chromium-sandbox
+        Disable chromium security sandbox when converting to PDF..
+        Equivalent to: [--WebPDFExporter.disable_sandbox=True]
+    --show-input
+        Shows code input. This flag is only useful for dejavu users.
+        Equivalent to: [--TemplateExporter.exclude_input=False]
+    --embed-images
+        Embed the images as base64 dataurls in the output. This flag is only useful for the HTML/WebPDF/Slides exports.
+        Equivalent to: [--HTMLExporter.embed_images=True]
+    --sanitize-html
+        Whether the HTML in Markdown cells and cell outputs should be sanitized..
+        Equivalent to: [--HTMLExporter.sanitize_html=True]
+    --log-level=<Enum>
+        Set the log level by value or name.
+        Choices: any of [0, 10, 20, 30, 40, 50, 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL']
+        Default: 30
+        Equivalent to: [--Application.log_level]
+    --config=<Unicode>
+        Full path of a config file.
+        Default: ''
+        Equivalent to: [--JupyterApp.config_file]
+    --to=<Unicode>
+        The export format to be used, either one of the built-in formats
+                ['asciidoc', 'custom', 'html', 'latex', 'markdown', 'notebook', 'pdf', 'python', 'qtpdf', 'qtpng', 'rst', 'script', 'slides', 'webpdf']
+                or a dotted object name that represents the import path for an
+                ``Exporter`` class
+        Default: ''
+        Equivalent to: [--NbConvertApp.export_format]
+    --template=<Unicode>
+        Name of the template to use
+        Default: ''
+        Equivalent to: [--TemplateExporter.template_name]
+    --template-file=<Unicode>
+        Name of the template file to use
+        Default: None
+        Equivalent to: [--TemplateExporter.template_file]
+    --theme=<Unicode>
+        Template specific theme(e.g. the name of a JupyterLab CSS theme distributed
+        as prebuilt extension for the lab template)
+        Default: 'light'
+        Equivalent to: [--HTMLExporter.theme]
+    --sanitize_html=<Bool>
+        Whether the HTML in Markdown cells and cell outputs should be sanitized.This
+        should be set to True by nbviewer or similar tools.
+        Default: False
+        Equivalent to: [--HTMLExporter.sanitize_html]
+    --writer=<DottedObjectName>
+        Writer class used to write the
+                                            results of the conversion
+        Default: 'FilesWriter'
+        Equivalent to: [--NbConvertApp.writer_class]
+    --post=<DottedOrNone>
+        PostProcessor class used to write the
+                                            results of the conversion
+        Default: ''
+        Equivalent to: [--NbConvertApp.postprocessor_class]
+    --output=<Unicode>
+        Overwrite base name use for output files.
+                    Supports pattern replacements '{notebook_name}'.
+        Default: '{notebook_name}'
+        Equivalent to: [--NbConvertApp.output_base]
+    --output-dir=<Unicode>
+        Directory to write output(s) to. Defaults
+                                      to output to the directory of each notebook. To recover
+                                      previous default behaviour (outputting to the current
+                                      working directory) use . as the flag value.
+        Default: ''
+        Equivalent to: [--FilesWriter.build_directory]
+    --reveal-prefix=<Unicode>
+        The URL prefix for reveal.js (version 3.x).
+                This defaults to the reveal CDN, but can be any url pointing to a copy
+                of reveal.js.
+                For speaker notes to work, this must be a relative path to a local
+                copy of reveal.js: e.g., "reveal.js".
+                If a relative path is given, it must be a subdirectory of the
+                current directory (from which the server is run).
+                See the usage documentation
+                (https://nbconvert.readthedocs.io/en/latest/usage.html#reveal-js-html-slideshow)
+                for more details.
+        Default: ''
+        Equivalent to: [--SlidesExporter.reveal_url_prefix]
+    --nbformat=<Enum>
+        The nbformat version to write.
+                Use this to downgrade notebooks.
+        Choices: any of [1, 2, 3, 4]
+        Default: 4
+        Equivalent to: [--NotebookExporter.nbformat_version]
+    
+    Examples
+    --------
+    
+        The simplest way to use nbconvert is
+    
+                > jupyter nbconvert mynotebook.ipynb --to html
+    
+                Options include ['asciidoc', 'custom', 'html', 'latex', 'markdown', 'notebook', 'pdf', 'python', 'qtpdf', 'qtpng', 'rst', 'script', 'slides', 'webpdf'].
+    
+                > jupyter nbconvert --to latex mynotebook.ipynb
+    
+                Both HTML and LaTeX support multiple output templates. LaTeX includes
+                'base', 'article' and 'report'.  HTML includes 'basic', 'lab' and
+                'classic'. You can specify the flavor of the format used.
+    
+                > jupyter nbconvert --to html --template lab mynotebook.ipynb
+    
+                You can also pipe the output to stdout, rather than a file
+    
+                > jupyter nbconvert mynotebook.ipynb --stdout
+    
+                PDF is generated via latex
+    
+                > jupyter nbconvert mynotebook.ipynb --to pdf
+    
+                You can get (and serve) a Reveal.js-powered slideshow
+    
+                > jupyter nbconvert myslides.ipynb --to slides --post serve
+    
+                Multiple notebooks can be given at the command line in a couple of
+                different ways:
+    
+                > jupyter nbconvert notebook*.ipynb
+                > jupyter nbconvert notebook1.ipynb notebook2.ipynb
+    
+                or you can specify the notebooks list in a config file, containing::
+    
+                    c.NbConvertApp.notebooks = ["my_notebook.ipynb"]
+    
+                > jupyter nbconvert --config mycfg.py
+    
+    To see all available configurables, use `--help-all`.
+    
 
 
 
