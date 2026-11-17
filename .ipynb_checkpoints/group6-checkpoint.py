@@ -266,19 +266,17 @@ def ask_option(question, choices):
 def ask_year_month(question):
     while True:
         answer_year_month = input(question).strip()
-        if(
-            len(answer_year_month) == 7
-            and answer_year_month[4] == "-"
-            and answer_year_month[:4].isdigit()
-            and answer_year_month[5:].isdigit()
-            and int(answer_year_month[:4]) >= 2005
-            and 1 <= int(answer_year_month[5:]) <= 12
-        ):
-            try:
-                return np.datetime64(answer_year_month, "M")
-                break
-            except ValueError:
-                print("Use the format YYYY-MM, e.g. 2015-01.")
+        if not(
+            len(answer_year_month) == 7 and answer_year_month[4] == "-"
+            and answer_year_month[:4].isdigit() and answer_year_month[5:].isdigit()):
+            print("Use the format YYYY-MM, e.g. 2015-01.")
+            
+        elif int(answer_year_month[:4]) < 2005:
+            print("The data starts in 2005-01. Please enter 2005-01 or later.")
+        elif not 1 <= int(answer_year_month[5:]) <= 12:
+            print("The month must be between 01 and 12.")
+        else:
+            return np.datetime64(answer_year_month, "M")
 
 def build_series(country, rate_name, start, end):
     in_country = hpi["RegionName"] == country
@@ -353,82 +351,109 @@ def run_q1():
     print("2. Choose between 2-year and 5-year 75% LTV fixed mortgage interest rates")
     print("3. A start and end month for the analysis")
 
-    print("\n")
+    print("\n" + "-" * 65)
+    print("1. Choose a UK country")
+    print("" + "-" * 65)
     
     # Choose Region
     countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
     country_answer = ask_option("Choose the region you want to analyse:", countries)
 
+    print("\n" + "-" * 65)
+    print("2. Choose a mortgage rate")
+    print("" + "-" * 65)
+    print("Rate2y = rate fixed for 2 years. Rate5y = rate fixed for 5 years.")
+    print("Both are for a 75% LTV mortgage.")
     # Choose Mortgage Rate (2y or 5y) to analyze.
     rates = ["rate2y", "rate5y"]
     rate_answer = ask_option("Choose term of the mortgage rate:", ["Rate2y", "Rate5y"])
 
     # Ask Start-Month
-    start_month = ask_year_month("Determine the start month for analysis (YYYY-MM) >= January 2005: ")
-    end_month = ask_year_month("Determine the end month for analysis (YYYY-MM): ")
+    print("\n" + "-" * 65)
+    print("3. Choose the start month and end month")
+    print("" + "-" * 65)
+
+    print("Type each month as YYYY-MM, for example 2015-06 for June 2015.")
+    print("- The start month must be 2005-01 or later.")
+    print("- The end month must not be earlier than the start month.")
+    print("- The period must cover at least 12 months, because a")
+    print("  correlation based on very few months is not reliable.")
+
+
+    while True:
+        start_month = ask_year_month("Determine the start month for analysis: ")
+        end_month = ask_year_month("Determine the end month for analysis: ")
+
+        # count the months in the period, including both ends
+        n_months = int((end_month - start_month).astype(int)) + 1
+        MIN_MONTHS = 12
+        
+        if n_months < 1:
+            print("The end month must not be earlier than the start month.")
+        elif n_months < MIN_MONTHS:
+            print("That period covers only %d month(s). Please choose at"
+                  % n_months)
+            print("least %d months." % MIN_MONTHS)
+        else:
+            break
+    
+    print("\n" + "-" * 65)
+    print(f"Mortgage Interest ({rate_answer}) Relationship with Annual Price Growth in {country_answer} from {start_month} and {end_month}.")
+    print("" + "-" * 65)
+    
 
     months, growth, rate = build_series(country_answer, rate_answer, start_month, end_month)
 
-    print("\n=== SELECTION ===")
     print("Country      :", country_answer)
     print("Mortgage rate:", rate_answer)
     print("Months used  :", months.shape[0])
+    print("Date range   :", months.min(), "to", months.max())
 
-    if months.shape[0] < 3:
-        print("Not enough data for this selection. Choose a wider period.")
+    print("\n--- Descriptive statistics ---")
+    # Mortgage Interest Rate
+    print("Mortgage Interest Rate:", rate_answer)
+    print("Mean:", round(statistics.mean(rate), 2))
+    print("Median:", round(statistics.median(rate), 2))
+    print("Standard Deviation:", round(statistics.stdev(rate), 2))
+    
+    # House Price Growth
+    print("\nHouse Price Growth (12mChange)")
+    print("Mean:", round(statistics.mean(growth), 2))
+    print("Median:", round(statistics.median(growth), 2))
+    print("Standard Deviation:", round(statistics.stdev(growth), 2))
+
+    pearson = stats.pearsonr(rate, growth)
+    fit = stats.linregress(rate, growth)
+
+    print("\n--- Pearson Correlation ---")
+    print(f"Pearson r    : {pearson.statistic:.3f} (p = {pearson.pvalue:.4f})")
+    print(f"r = {pearson.statistic:.3f}")
+    print(f"p-value = {pearson.pvalue:.4f}")
+    print("\n")
+    if pearson.pvalue >= 0.05:
+        print("Result: No statistifically significant linear relationship")
+        print("Hence, there is not enough statistical evidence to conclude that mortgage interest rates are linearly related to house price growth.")
+    elif pearson.statistic < 0:
+        print("Result: Significant negative linear relationship.")
+        print("Higher mortgage interest rates tend to be associated with lower annual house price growth.")
+        print("Note - this relationship is statistifically siginificant at the 5% level.")
     else:
-        print("Date range   :", months.min(), "to", months.max())
-        print("\n=== RQ1: Are higher mortgage interest rates associated with lower annual house price growth? ===")
+        print("Result: Significant positive linear relationship.")
+        print("Higher mortgage interest rate tend to be associated with higher annual house price growth")
+        print("Note - this relationship is statistifically siginificant at the 5% level.")
 
-        print("--- Descriptive statistics ---")
-        # Mortgage Interest Rate
-        print("Mortgage Interest Rate:", rate_answer)
-        print("Mean:", round(statistics.mean(rate), 2))
-        print("Median:", round(statistics.median(rate), 2))
-        print("Standard Deviation:", round(statistics.stdev(rate), 2))
-        
-        # House Price Growth
-        print("\nHouse Price Growth (12mChange)")
-        print("Mean:", round(statistics.mean(growth), 2))
-        print("Median:", round(statistics.median(growth), 2))
-        print("Standard Deviation:", round(statistics.stdev(growth), 2))
+    plt.scatter(rate, growth)
 
-        pearson = stats.pearsonr(rate, growth)
-        spearman = stats.spearmanr(rate, growth)
-        fit = stats.linregress(rate, growth)
+    line_x = np.linspace(rate.min(), rate.max(), 100)
+    line_y = fit.intercept + fit.slope * line_x
     
-        print("--- Association ---")
-        print(f"Pearson r    : {pearson.statistic:.3f} (p = {pearson.pvalue:.4f})")
+    plt.plot(line_x, line_y, color="red")
     
-        
-        print("--- Pearson Correlation ---")
-        print(f"r = {pearson.statistic:.3f}")
-        print(f"p-value = {pearson.pvalue:.4f}")
-        
-        if pearson.pvalue >= 0.05:
-            print("Result: No statistifically significant linear relationship")
-            print("Hence, there is not enough statistical evidence to conclude that mortgage interest rates are linearly related to house price growth.")
-        elif pearson.statistic < 0:
-            print("Result: Significant negative linear relationship.")
-            print("Higher mortgage interest rates tend to be associated with lower annual house price growth.")
-            print("Note - this relationship is statistifically siginificant at the 5% level.")
-        else:
-            print("Result: Significant positive linear relationship.")
-            print("Higher mortgage interest rate tend to be associated with higher annual house price growth")
-            print("Note - this relationship is statistifically siginificant at the 5% level.")
-
-        plt.scatter(rate, growth)
-
-        line_x = np.linspace(rate.min(), rate.max(), 100)
-        line_y = fit.intercept + fit.slope * line_x
-        
-        plt.plot(line_x, line_y, color="red")
-        
-        plt.xlabel("Mortgage interest rate (%)")
-        plt.ylabel("Annual house price growth (%)")
-        plt.title("Mortgage Rates vs House Price Growth")
-        
-        plt.show()
+    plt.xlabel("Mortgage interest rate (%)")
+    plt.ylabel("Annual house price growth (%)")
+    plt.title("Mortgage Rates vs House Price Growth")
+    
+    plt.show()
                 
 
 
