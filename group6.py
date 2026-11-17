@@ -719,6 +719,10 @@ def run_q3():
     data = np.column_stack((hpi["Date"], hpi["RegionName"],
                             hpi["AreaCode"], change_text))
 
+    print("\n" + "-" * 65)
+    print("1. Choose a UK country")
+    print("" + "-" * 65)
+    
     #Ask users to choose an area
     countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
 
@@ -734,7 +738,10 @@ def run_q3():
         "Wales": ("W06",),
         "Northern Ireland": ("N09",)
     }
-
+    print("\n" + "-" * 65)
+    print("2. Choose a start year and an end year for the analysis")
+    print("" + "-" * 65)
+    
     #Ask users to select a time period
     start_text = input("Enter the start year(2005 onwards): ").strip()
     end_text = input("Enter the end year(2005 onwards): ").strip()
@@ -746,9 +753,17 @@ def run_q3():
     start_year = int(start_text)
     end_year = int(end_text)
 
+    if start_year < 2005:
+        print("The data starts in 2005. Please choose 2005 or later.")
+        return
+
     if start_year > end_year:
         print("The start year must not be later than the end year.")
         return
+
+    print("\n" + "-" * 65)
+    print(f"Volatility Analysis for {selected_country} between {start_year} and {end_year}")
+    print("" + "-" * 65)
 
     print("Selected country:", selected_country)
     print("Select period:", start_year, "to", end_year)
@@ -961,7 +976,12 @@ def run_q4():
     print("shows the percentage change from the start to the end month.")
 
     print("\n> You will be asked to select:")
-    print("1. A UK region")
+    print("1. A Region in UK")
+    print("   - a country, e.g. England, Scotland, Wales, Northern Ireland")
+    print("   - a region, e.g. London, North East, South West")
+    print("   - a local area, e.g. Aberdeenshire, City of Edinburgh, Manchester")
+    print("   You can type part of a name (e.g. 'edin'). If more than one")
+    print("   area matches, you will be shown the list and asked again.")
     print("2. A start and end month for the analysis (YYYY-MM)")
     print("3. One or more property types to compare")
     print("4. A chart view (relative growth or prices in pounds)")
@@ -974,20 +994,27 @@ def run_q4():
         "TerracedPrice": "Terraced",
         "FlatPrice": "Flat",
     }
+
+    print("\n" + "-" * 65)
+    print("1. Choose a region in UK.")
+    print("" + "-" * 65)
+    region_names = sorted({row["RegionName"] for row in hpi})
+
+    region = choose_region("Region: ", region_names)
+
+    
+
     # Ask the user to choose a region
-    print("\nQ4 | Property Type Comparison")
-    region = input("Region: ").strip() or "Scotland"
+    # region = input("Region: ").strip() or "Scotland"
 
     # Read prices for the selected region, grouped by month.
     prices = {}
-    selected_region = region.casefold()
 
     # Use the shared HPI data to get prices for the selected region.
     for row in hpi:
-        if row["RegionName"].casefold() != selected_region:
+        if row["RegionName"] != region:
             continue
     
-        region = row["RegionName"]
         month = row["Year-Month"]
     
         prices[month] = {}
@@ -999,26 +1026,31 @@ def run_q4():
         print("Region not found. Try Scotland, England, or London.")
         return
     
-    # Ask for the start and end months
-    start_text = input("Start month (YYYY-MM): ").strip()
-    end_text = input("End month (YYYY-MM): ").strip()
-    
-    try:
-        start = np.datetime64(start_text or "2020-01", "M")
-        end = np.datetime64(end_text or "2025-01", "M")
-   
-    except ValueError:
-        print("Please enter a month in YYYY-MM format, for example 2020-01.")
-        return
+    # Ask Start-Month
+    print("\n" + "-" * 65)
+    print("3. Choose the start month and end month")
+    print("" + "-" * 65)
 
-    if start >= end:
-        print("The end month must be after the start month.")
-        return
+    print("Type each month as YYYY-MM, for example 2015-06 for June 2015.")
+    print("- The start month must be 2005-01 or later.")
+    print("- The end month must not be earlier than the start month.")
 
-    if start not in prices or end not in prices:
-        print(f"{region} has no data for one or both selected months.")
-        return
+    while True:
+        start = ask_year_month("Determine the start month for analysis: ")
+        end = ask_year_month("Determine the end month for analysis: ")
+        
+        if start >= end:
+            print("The end month must be after the start month.")
+        elif start not in prices or end not in prices:
+            print(f"{region} has no data for one or both selected months.")
+        else:
+            break
+
+
 	# Ask which property types to compare
+    print("\n" + "-" * 65)
+    print("3. Choose property types to compare.")
+    print("" + "-" * 65)
     options = dict(zip(["1", "2", "3", "4"], price_columns.values()))
     print("1. Detached  2. Semi-detached  3. Terraced  4. Flat")
 
@@ -1030,6 +1062,11 @@ def run_q4():
         return
    
     # Calculate the change in pounds and as a percentage
+    
+    print("\n" + "-" * 65)
+    print("4. Choose a chart view (relative growth or prices in pounds).")
+    print("" + "-" * 65)
+    
     property_types = [options[number] for number in dict.fromkeys(numbers)]
     view = input("Chart view (1 = relative growth, 2 = price in £): ").strip() or "1"
 
