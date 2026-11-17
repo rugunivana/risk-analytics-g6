@@ -458,43 +458,43 @@ def run_q2():
 
     print("\n> You will be asked to select:")
     print("1. Two different UK areas")
+    print("   - a country, e.g. England, Scotland, Wales, Northern Ireland")
+    print("   - a region, e.g. London, North East, South West")
+    print("   - a local area, e.g. Aberdeenshire, City of Edinburgh, Manchester")
+    print("   You can type part of a name (e.g. 'edin'). If more than one")
+    print("   area matches, you will be shown the list and asked again.")
     print("2. A start year and an end year for the analysis")
     
-    for i in range(len(columns)):
-        if columns[i] == "Date":
-            date_column = i
-        if columns[i] == "RegionName":
-            region_column = i
-        if columns[i] == "NewPrice":
-            new_column = i
-        if columns[i] == "OldPrice":
-            old_column = i
+    # Build the four columns Q2 needs from the shared hpi data
+    years = hpi["Year-Month"].astype("datetime64[Y]").astype(int) + 1970
+    new_text = np.where(np.isfinite(hpi["NewPrice"]),
+                        hpi["NewPrice"].astype(str), "")
+    old_text = np.where(np.isfinite(hpi["OldPrice"]),
+                        hpi["OldPrice"].astype(str), "")
 
-    # Read the required columns
-    data = np.loadtxt(
-        fname = path_uk_hpi,
-        delimiter = ",",
-        dtype = str,
-        skiprows = 1,
-        usecols = (
-            date_column,
-            region_column,
-            new_column,
-            old_column
-        )
-    )
+    data = np.column_stack((years.astype(str), hpi["RegionName"],
+                            new_text, old_text))
 
     # Get the user's choices
     region_names = []
     for name in data[:, 1]:
         if name not in region_names:
             region_names.append(name)
-            
+    print("\n" + "-" * 65)
+    print("1. Choose two different UK areas.")
+    print("" + "-" * 65)
     region_1 = choose_region("Enter the first region: ", region_names)
     region_2 = choose_region("Enter the second region: ", region_names)
 
-    start_text = input("Enter the start year: ").strip()
-    end_text = input("Enter the end year: ").strip()
+    max_year = int(str(hpi["Year-Month"].max())[:4])
+    print("\n" + "-" * 65)
+    print("2. Choose a start year and an end year for the analysis")
+    print("" + "-" * 65)
+    print("The data is monthly. Both years are included in full, so")
+    print("2005 to 2006 means January 2005 to December 2006 (24 months).")
+
+    start_text = input(f"\nEnter the start year (2005 to {max_year}): ").strip()
+    end_text = input(f"Enter the end year (2005 to {max_year}): ").strip()
 
     if not start_text.isdigit() or not end_text.isdigit():
         print("Please enter whole numbers for the years.")
@@ -502,6 +502,10 @@ def run_q2():
 
     start_year = int(start_text)
     end_year = int(end_text)
+
+    if start_year < 2005 or end_year > max_year:
+        print(f"Please choose years between 2005 and {max_year}.")
+        return
 
     if start_year > end_year:
         print("The start year must not be later than the end year.")
@@ -511,6 +515,10 @@ def run_q2():
         print("Please choose two different regions.")
         return
 
+    print("\n" + "-" * 65)
+    print(f"Price Gap and New-build premiums Analysis between {region_1} and {region_2}.")
+    print("" + "-" * 65)
+    print("")
     regions = [region_1, region_2]
     average_gaps = []
     average_premiums = []
@@ -540,11 +548,14 @@ def run_q2():
                             count = count + 1
 
         valid_counts.append(count)
+        # Compare only when both regions have complete monthly data
+        expected_months = (end_year - start_year + 1) * 12
 
         print()
         print("Region:", region)
         print("Period:", start_year, "to", end_year)
-        print("Valid monthly observations:", count)
+        print("Months with both prices: %d of %d" % (count, expected_months))
+
 
         if count > 0:
             average_gap = total_gap / count
@@ -562,45 +573,90 @@ def run_q2():
             average_premiums.append(0)
             print("No valid data found. Check the region name and years.")
 
-    # Compare only when both regions have complete monthly data
-    expected_months = (end_year - start_year + 1) * 12
+    
 
     if valid_counts[0] > 0 and valid_counts[1] > 0:
-        if (valid_counts[0] == expected_months
-                and valid_counts[1] == expected_months):
+        if (valid_counts[0] != expected_months and valid_counts[1] != expected_months):
             print()
-            print("COMPARISON")
+            print("Note: some months are missing from the selected period,")
+            print("so the averages use only the months with data.")
+            
+        print()
+        print("COMPARISON")
 
-            gap_difference = average_gaps[0] - average_gaps[1]
-            premium_difference = average_premiums[0] - average_premiums[1]
+        gap_difference = average_gaps[0] - average_gaps[1]
+        premium_difference = average_premiums[0] - average_premiums[1]
 
-            if gap_difference > 0:
-                print("The larger average price gap is in:", regions[0])
-            elif gap_difference < 0:
-                print("The larger average price gap is in:", regions[1])
-            else:
-                print("Both regions have the same average price gap.")
-
-            print("Difference in average price gaps: GBP %.2f"
-                  % abs(gap_difference))
-
-            if premium_difference > 0:
-                print("The higher average new-build premium is in:",
-                      regions[0])
-            elif premium_difference < 0:
-                print("The higher average new-build premium is in:",
-                      regions[1])
-            else:
-                print("Both regions have the same average premium.")
-
-            print("Difference in average premiums: %.2f percentage points"
-                  % abs(premium_difference))
-
+        if gap_difference > 0:
+            print("The larger average price gap is in:", regions[0])
+        elif gap_difference < 0:
+            print("The larger average price gap is in:", regions[1])
         else:
-            print()
-            print("Some months are missing from the selected period.")
-            print("Choose a period with complete data for both regions "
-                  "to compare them.")
+            print("Both regions have the same average price gap.")
+
+        print("Difference in average price gaps: GBP %.2f"
+              % abs(gap_difference))
+
+        if premium_difference > 0:
+            print("The higher average new-build premium is in:",
+                  regions[0])
+        elif premium_difference < 0:
+            print("The higher average new-build premium is in:",
+                  regions[1])
+        else:
+            print("Both regions have the same average premium.")
+
+        print("Difference in average premiums: %.2f percentage points"
+              % abs(premium_difference))
+
+        print()
+        print("CONCLUSION")
+
+        gap_1 = average_gaps[0]
+        gap_2 = average_gaps[1]
+        premium_1 = average_premiums[0]
+        premium_2 = average_premiums[1]
+
+        # First area
+        if premium_1 >= 0:
+            print("- In %s, new-build homes cost MORE than existing homes:"
+                  % region_1)
+            print("  GBP %.2f more on average, a premium of %.2f%%."
+                  % (gap_1, premium_1))
+        else:
+            print("- In %s, new-build homes cost LESS than existing homes:"
+                  % region_1)
+            print("  GBP %.2f less on average, a discount of %.2f%%."
+                  % (abs(gap_1), abs(premium_1)))
+
+        # Second area
+        if premium_2 >= 0:
+            print("- In %s, new-build homes cost MORE than existing homes:"
+                  % region_2)
+            print("  GBP %.2f more on average, a premium of %.2f%%."
+                  % (gap_2, premium_2))
+        else:
+            print("- In %s, new-build homes cost LESS than existing homes:"
+                  % region_2)
+            print("  GBP %.2f less on average, a discount of %.2f%%."
+                  % (abs(gap_2), abs(premium_2)))
+
+        # Both areas together
+        if premium_1 >= 0 and premium_2 >= 0:
+            if premium_1 >= premium_2:
+                print("- Both areas have a new-build premium; it is higher in %s."
+                      % region_1)
+            else:
+                print("- Both areas have a new-build premium; it is higher in %s."
+                      % region_2)
+        elif premium_1 < 0 and premium_2 < 0:
+            print("- Both areas have a new-build discount.")
+        else:
+            print("- The two areas point in opposite directions, so there is")
+            print("  no new-build premium that applies to both.")
+
+        
+
 
 
 

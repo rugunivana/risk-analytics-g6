@@ -458,43 +458,43 @@ def run_q2():
 
     print("\n> You will be asked to select:")
     print("1. Two different UK areas")
+    print("   - a country, e.g. England, Scotland, Wales, Northern Ireland")
+    print("   - a region, e.g. London, North East, South West")
+    print("   - a local area, e.g. Aberdeenshire, City of Edinburgh, Manchester")
+    print("   You can type part of a name (e.g. 'edin'). If more than one")
+    print("   area matches, you will be shown the list and asked again.")
     print("2. A start year and an end year for the analysis")
     
-    for i in range(len(columns)):
-        if columns[i] == "Date":
-            date_column = i
-        if columns[i] == "RegionName":
-            region_column = i
-        if columns[i] == "NewPrice":
-            new_column = i
-        if columns[i] == "OldPrice":
-            old_column = i
+    # Build the four columns Q2 needs from the shared hpi data
+    years = hpi["Year-Month"].astype("datetime64[Y]").astype(int) + 1970
+    new_text = np.where(np.isfinite(hpi["NewPrice"]),
+                        hpi["NewPrice"].astype(str), "")
+    old_text = np.where(np.isfinite(hpi["OldPrice"]),
+                        hpi["OldPrice"].astype(str), "")
 
-    # Read the required columns
-    data = np.loadtxt(
-        fname = path_uk_hpi,
-        delimiter = ",",
-        dtype = str,
-        skiprows = 1,
-        usecols = (
-            date_column,
-            region_column,
-            new_column,
-            old_column
-        )
-    )
+    data = np.column_stack((years.astype(str), hpi["RegionName"],
+                            new_text, old_text))
 
     # Get the user's choices
     region_names = []
     for name in data[:, 1]:
         if name not in region_names:
             region_names.append(name)
-            
+    print("\n" + "-" * 65)
+    print("1. Choose two different UK areas.")
+    print("" + "-" * 65)
     region_1 = choose_region("Enter the first region: ", region_names)
     region_2 = choose_region("Enter the second region: ", region_names)
 
-    start_text = input("Enter the start year: ").strip()
-    end_text = input("Enter the end year: ").strip()
+    max_year = int(str(hpi["Year-Month"].max())[:4])
+    print("\n" + "-" * 65)
+    print("2. Choose a start year and an end year for the analysis")
+    print("" + "-" * 65)
+    print("The data is monthly. Both years are included in full, so")
+    print("2005 to 2006 means January 2005 to December 2006 (24 months).")
+
+    start_text = input(f"\nEnter the start year (2005 to {max_year}): ").strip()
+    end_text = input(f"Enter the end year (2005 to {max_year}): ").strip()
 
     if not start_text.isdigit() or not end_text.isdigit():
         print("Please enter whole numbers for the years.")
@@ -502,6 +502,10 @@ def run_q2():
 
     start_year = int(start_text)
     end_year = int(end_text)
+
+    if start_year < 2005 or end_year > max_year:
+        print(f"Please choose years between 2005 and {max_year}.")
+        return
 
     if start_year > end_year:
         print("The start year must not be later than the end year.")
@@ -511,6 +515,10 @@ def run_q2():
         print("Please choose two different regions.")
         return
 
+    print("\n" + "-" * 65)
+    print(f"Price Gap and New-build premiums Analysis between {region_1} and {region_2}.")
+    print("" + "-" * 65)
+    print("")
     regions = [region_1, region_2]
     average_gaps = []
     average_premiums = []
@@ -540,11 +548,14 @@ def run_q2():
                             count = count + 1
 
         valid_counts.append(count)
+        # Compare only when both regions have complete monthly data
+        expected_months = (end_year - start_year + 1) * 12
 
         print()
         print("Region:", region)
         print("Period:", start_year, "to", end_year)
-        print("Valid monthly observations:", count)
+        print("Months with both prices: %d of %d" % (count, expected_months))
+
 
         if count > 0:
             average_gap = total_gap / count
@@ -562,90 +573,146 @@ def run_q2():
             average_premiums.append(0)
             print("No valid data found. Check the region name and years.")
 
-    # Compare only when both regions have complete monthly data
-    expected_months = (end_year - start_year + 1) * 12
+    
 
     if valid_counts[0] > 0 and valid_counts[1] > 0:
-        if (valid_counts[0] == expected_months
-                and valid_counts[1] == expected_months):
+        if (valid_counts[0] != expected_months and valid_counts[1] != expected_months):
             print()
-            print("COMPARISON")
+            print("Note: some months are missing from the selected period,")
+            print("so the averages use only the months with data.")
+            
+        print()
+        print("COMPARISON")
 
-            gap_difference = average_gaps[0] - average_gaps[1]
-            premium_difference = average_premiums[0] - average_premiums[1]
+        gap_difference = average_gaps[0] - average_gaps[1]
+        premium_difference = average_premiums[0] - average_premiums[1]
 
-            if gap_difference > 0:
-                print("The larger average price gap is in:", regions[0])
-            elif gap_difference < 0:
-                print("The larger average price gap is in:", regions[1])
-            else:
-                print("Both regions have the same average price gap.")
-
-            print("Difference in average price gaps: GBP %.2f"
-                  % abs(gap_difference))
-
-            if premium_difference > 0:
-                print("The higher average new-build premium is in:",
-                      regions[0])
-            elif premium_difference < 0:
-                print("The higher average new-build premium is in:",
-                      regions[1])
-            else:
-                print("Both regions have the same average premium.")
-
-            print("Difference in average premiums: %.2f percentage points"
-                  % abs(premium_difference))
-
+        if gap_difference > 0:
+            print("The larger average price gap is in:", regions[0])
+        elif gap_difference < 0:
+            print("The larger average price gap is in:", regions[1])
         else:
-            print()
-            print("Some months are missing from the selected period.")
-            print("Choose a period with complete data for both regions "
-                  "to compare them.")
+            print("Both regions have the same average price gap.")
+
+        print("Difference in average price gaps: GBP %.2f"
+              % abs(gap_difference))
+
+        if premium_difference > 0:
+            print("The higher average new-build premium is in:",
+                  regions[0])
+        elif premium_difference < 0:
+            print("The higher average new-build premium is in:",
+                  regions[1])
+        else:
+            print("Both regions have the same average premium.")
+
+        print("Difference in average premiums: %.2f percentage points"
+              % abs(premium_difference))
+
+        print()
+        print("CONCLUSION")
+
+        gap_1 = average_gaps[0]
+        gap_2 = average_gaps[1]
+        premium_1 = average_premiums[0]
+        premium_2 = average_premiums[1]
+
+        # First area
+        if premium_1 >= 0:
+            print("- In %s, new-build homes cost MORE than existing homes:"
+                  % region_1)
+            print("  GBP %.2f more on average, a premium of %.2f%%."
+                  % (gap_1, premium_1))
+        else:
+            print("- In %s, new-build homes cost LESS than existing homes:"
+                  % region_1)
+            print("  GBP %.2f less on average, a discount of %.2f%%."
+                  % (abs(gap_1), abs(premium_1)))
+
+        # Second area
+        if premium_2 >= 0:
+            print("- In %s, new-build homes cost MORE than existing homes:"
+                  % region_2)
+            print("  GBP %.2f more on average, a premium of %.2f%%."
+                  % (gap_2, premium_2))
+        else:
+            print("- In %s, new-build homes cost LESS than existing homes:"
+                  % region_2)
+            print("  GBP %.2f less on average, a discount of %.2f%%."
+                  % (abs(gap_2), abs(premium_2)))
+
+        # Both areas together
+        if premium_1 >= 0 and premium_2 >= 0:
+            if premium_1 >= premium_2:
+                print("- Both areas have a new-build premium; it is higher in %s."
+                      % region_1)
+            else:
+                print("- Both areas have a new-build premium; it is higher in %s."
+                      % region_2)
+        elif premium_1 < 0 and premium_2 < 0:
+            print("- Both areas have a new-build discount.")
+        else:
+            print("- The two areas point in opposite directions, so there is")
+            print("  no new-build premium that applies to both.")
+
+        
+
 
 
 
 # ============================================================
-# RQ3
+# RQ3: Which UK regions had the most volatile monthly house price changes over a user-selected period?
 # ============================================================
 
 def run_q3():
-    file_path = "uk_house_index_data_aug2026.csv"
+    #Introduction
+    print("\n" + "=" * 65)
+    print("Q3 | Monthly House Price Volatility")
+    print("=" * 65)
 
-    #Read the column names
-    columns = np.loadtxt(
-        fname=file_path,
-        delimiter=",",
-        dtype=str,
-        max_rows=1
+    print("\n> Research Question:")
+    print("Which UK regions had the most volatile monthly house price")
+    print("changes over a period selected by the user?")
+
+    print("\n> About this analysis")
+    print("This analysis uses monthly data from the UK House Price Index")
+    print("(HPI) to compare house price changes across local areas.")
+    print("It calculates the standard deviation of monthly percentage")
+    print("changes to identify areas with higher and lower volatility.")
+    print("A higher standard deviation indicates greater price fluctuations.")
+
+    print("\n> You will be asked to select:")
+    print("1. England, Scotland, Wales, Northern Ireland or United Kingdom")
+    print("2. A start year and an end year for the analysis")
+
+    #Use the HPI dataset already loaded by the group (from 2005 onward).
+    #NumPy changes the CSV heading "1m%Change" to "1mChange".
+    #Keep the four columns in the same order as the original Q3.
+    monthly_change = hpi["1mChange"]
+    change_text = np.where(np.isfinite(monthly_change),
+                           monthly_change.astype(str), "")
+    data = np.column_stack((hpi["Date"], hpi["RegionName"],
+                            hpi["AreaCode"], change_text))
+
+    #Ask users to choose an area
+    countries = ["England", "Scotland", "Wales", "Northern Ireland", "United Kingdom"]
+
+    selected_country = ask_option(
+        "Choose the region you want to analyse:",
+        countries
     )
 
-    for i in range(len(columns)):
-        if columns[i] == "Date":
-            date_column = i
-        if columns[i] == "RegionName":
-            region_column = i
-        if columns[i] == "AreaCode":
-            area_column = i
-        if columns[i] == "1m%Change":
-            change_column = i
-
-    #Read the required data
-    data = np.loadtxt(
-        fname=file_path,
-        delimiter=",",
-        dtype=str,
-        skiprows=1,
-        usecols=(
-            date_column,
-            region_column,
-            area_column,
-            change_column
-        )
-    )
+    #AreaCode prefixes for local authority areas
+    area_codes = {
+        "England": ("E06", "E07", "E08", "E09"),
+        "Scotland": ("S12",),
+        "Wales": ("W06",),
+        "Northern Ireland": ("N09",)
+    }
 
     #Ask users to select a time period
-    start_text = input("Enter the start year: ").strip()
-    end_text = input("Enter the end year: ").strip()
+    start_text = input("Enter the start year(2005 onwards): ").strip()
+    end_text = input("Enter the end year(2005 onwards): ").strip()
 
     if not start_text.isdigit() or not end_text.isdigit():
         print("Please enter whole numbers for the years.")
@@ -658,16 +725,37 @@ def run_q3():
         print("The start year must not be later than the end year.")
         return
 
+    print("Selected country:", selected_country)
     print("Select period:", start_year, "to", end_year)
 
+    #Get the AreaCode prefixes for the selected country
+    if selected_country == "United Kingdom":
+        selected_prefixes = (
+            "E06", "E07", "E08", "E09",
+            "S12", "W06", "N09"
+        )
+    else:
+        selected_prefixes = area_codes[selected_country]
+
+    #Keep all UK data for the four-country comparison
+    uk_data = []
+
+    for i in range(data.shape[0]):
+        year = int(data[i, 0][-4:])
+
+        if start_year <= year <= end_year:
+            uk_data.append(data[i])
+    
     #filter the data by year
     filtered_data = []
 
     for i in range(data.shape[0]):
         year = int(data[i,0][-4:])
+        area_code = data[i, 2]
 
         if start_year <= year <= end_year:
-            filtered_data.append(data[i])
+            if area_code.startswith(selected_prefixes):
+                filtered_data.append(data[i])
 
     #check for missing values
     valid_data = []
@@ -686,7 +774,6 @@ def run_q3():
     print("Number of records:", len(filtered_data))
     print("Valid monthly changes:", valid_count)
     print("Missing monthly changes:", missing_count)
-
     if valid_count == 0:
         print("No valid data found for the selected years.")
         return
@@ -697,15 +784,6 @@ def run_q3():
     for row in valid_data:
         if row[1] not in region_names:
             region_names.append(row[1])
-
-    countries = ["England", "Scotland", "Wales", "Northern Ireland"]
-
-    print()
-    print("UK countries in the data:")
-
-    for country in countries:
-        if country in region_names:
-            print(country)
 
     print()
     print("Number of regions:", len(region_names))
@@ -731,7 +809,7 @@ def run_q3():
                 standard_deviation
             ])
     
-    # Select local authority areas across the UK
+    #Select local authority areas across the UK
     local_area_names = []
 
     area_prefixes = ("E06", "E07", "E08", "E09","S12", "W06", "N09")
@@ -754,7 +832,10 @@ def run_q3():
     print("Regions with the highest price volatility:")
 
     for i in range(min(5, len(local_region_results))):
-        print(local_region_results[i])
+        result = local_region_results[i]
+        print(f"{i + 1}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
 
     #Show regions with the lowest volatility
     local_region_results.sort(key=lambda x: x[2])
@@ -763,40 +844,58 @@ def run_q3():
     print("Regions with the lowest price volatility:")
     
     for i in range(min(5, len(local_region_results))):
-        print(local_region_results[i])
+        result = local_region_results[i]
+        print(f"{i + 1}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
 
-    #compare four UK countries
-    available_countries = []
+    #Compare the four UK countries
+    four_countries = ["England", "Scotland", "Wales", "Northern Ireland"]
 
-    for result in region_results:
-        if result[0] in countries:
-            available_countries.append(result[0])
+    country_results = []
 
-    if len(available_countries) < 4:
+    for country in four_countries:
+        change_values = []
+
+        for row in uk_data:
+            if row[1] == country and row[3].strip() != "":
+                change_values.append(float(row[3]))
+
+        if len(change_values) > 1:
+            average_change = statistics.mean(change_values)
+            standard_deviation = statistics.stdev(change_values)
+
+            country_results.append([
+                country,
+                average_change,
+                standard_deviation
+            ])
+
+    if len(country_results) < 4:
         print("Note: Not all four countries have enough data.")
-    
+
     print()
     print("Price volatility in the four UK countries:")
 
-    for result in region_results:
-        if result[0] in countries:
-            print(result[0],
-                 "Average change:", round(result[1],3),
-                 "Standard deviation:", round(result[2],3)
-                 )
+    for i, result in enumerate(country_results, 1):
+        print(f"\n{i}. {result[0]}")
+        print(f"   Average monthly change: {result[1]:.3f}%")
+        print(f"   Standard deviation: {result[2]:.3f}")
 
-    #draw the bar chart
+    #Draw the bar chart
     country_names = []
     country_volatility = []
 
-    for country in countries:
-        for result in region_results:
-            if result[0] == country:
-                country_names.append(country)
-                country_volatility.append(result[2])
+    for result in country_results:
+        country_names.append(result[0])
+        country_volatility.append(result[2])
 
-    plt.figure(figsize=(8,5))
-    plt.bar(country_names,country_volatility)
+    if not country_names:
+        print("No country data available to plot.")
+        return
+
+    plt.figure(figsize=(8, 5))
+    plt.bar(country_names, country_volatility)
 
     plt.title("House Price Volatility in the UK Countries")
     plt.xlabel("Country")
@@ -807,17 +906,10 @@ def run_q3():
     plt.show()
 
 
-
 # ============================================================
-# RQ4
+# RQ4: How have house prices changed across property types in a selected region and period?
 # ============================================================
-import csv
-import math
-from datetime import datetime
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-
+  
 
 def read_price(text):
     """Return a number, or None if the price is missing or invalid."""
@@ -826,48 +918,70 @@ def read_price(text):
     except (TypeError, ValueError):
         return None
 
-    return price if math.isfinite(price) else None
-
+    return price if np.isfinite(price) else None
 
 def run_q4():
-    csv_path = Path("uk_house_index_data_aug2026.csv")
+    print("\n" + "=" * 65)
+    print("Q4 | Property Type Comparison")
+    print("=" * 65)
 
+    print("> Research Question:")
+    print("Which property type had the largest percentage change in")
+    print("average price in the selected region and period?")
+
+    print("\n> About this analysis")
+    print("This analysis uses UK House Price Index data to compare")
+    print("detached houses, semi-detached houses, terraced houses and flats.")
+    print("The line chart shows monthly price trends, and the bar chart")
+    print("shows the percentage change from the start to the end month.")
+
+    print("\n> You will be asked to select:")
+    print("1. A UK region")
+    print("2. A start and end month for the analysis (YYYY-MM)")
+    print("3. One or more property types to compare")
+    print("4. A chart view (relative growth or prices in pounds)")
+    print()
+    
+    # Set the price columns for each property type
     price_columns = {
         "DetachedPrice": "Detached",
         "SemiDetachedPrice": "Semi-detached",
         "TerracedPrice": "Terraced",
         "FlatPrice": "Flat",
     }
-
+    # Ask the user to choose a region
     print("\nQ4 | Property Type Comparison")
-    region = input("Region (Enter for Scotland): ").strip() or "Scotland"
+    region = input("Region: ").strip() or "Scotland"
 
     # Read prices for the selected region, grouped by month.
     prices = {}
     selected_region = region.casefold()
 
-    with csv_path.open(encoding="utf-8-sig", newline="") as csv_file:
-        for row in csv.DictReader(csv_file):
-            if row["RegionName"].casefold() != selected_region:
-                continue
-
-            region = row["RegionName"]
-            month = datetime.strptime(row["Date"], "%d/%m/%Y")
-            prices[month] = {
-                name: read_price(row[column])
-                for column, name in price_columns.items()
-            }
+    # Use the shared HPI data to get prices for the selected region.
+    for row in hpi:
+        if row["RegionName"].casefold() != selected_region:
+            continue
+    
+        region = row["RegionName"]
+        month = row["Year-Month"]
+    
+        prices[month] = {}
+    
+        for column, name in price_columns.items():
+            prices[month][name] = read_price(row[column])
 
     if not prices:
         print("Region not found. Try Scotland, England, or London.")
         return
-
-    start_text = input("Start month (YYYY-MM, Enter for 2020-01): ").strip()
-    end_text = input("End month (YYYY-MM, Enter for 2025-01): ").strip()
-
+    
+    # Ask for the start and end months
+    start_text = input("Start month (YYYY-MM): ").strip()
+    end_text = input("End month (YYYY-MM): ").strip()
+    
     try:
-        start = datetime.strptime(start_text or "2020-01", "%Y-%m")
-        end = datetime.strptime(end_text or "2025-01", "%Y-%m")
+        start = np.datetime64(start_text or "2020-01", "M")
+        end = np.datetime64(end_text or "2025-01", "M")
+   
     except ValueError:
         print("Please enter a month in YYYY-MM format, for example 2020-01.")
         return
@@ -879,17 +993,18 @@ def run_q4():
     if start not in prices or end not in prices:
         print(f"{region} has no data for one or both selected months.")
         return
-
+	# Ask which property types to compare
     options = dict(zip(["1", "2", "3", "4"], price_columns.values()))
     print("1. Detached  2. Semi-detached  3. Terraced  4. Flat")
 
-    choice = input("Property types (e.g. 1,4 or Enter for all): ").strip()
+    choice = input("Property types (e.g. 1,4): ").strip()
     numbers = [item.strip() for item in choice.split(",")] if choice else list(options)
 
     if any(number not in options for number in numbers):
         print("Please select property types using numbers 1 to 4.")
         return
-
+   
+    # Calculate the change in pounds and as a percentage
     property_types = [options[number] for number in dict.fromkeys(numbers)]
     view = input("Chart view (1 = relative growth, 2 = price in £): ").strip() or "1"
 
@@ -897,7 +1012,7 @@ def run_q4():
         print("Please enter 1 or 2 for the chart view.")
         return
 
-    # Use the same result rows for the printed table, charts and CSV.
+    # Use the same result rows for the printed table, charts.
     results = []
     missing_types = []
 
@@ -924,7 +1039,7 @@ def run_q4():
 
     headers = ("Property type", "Start price (£)", "End price (£)", "Change (£)", "Change (%)")
 
-    print(f"\n{region} | {start:%b %Y} to {end:%b %Y}")
+    print(f"\n{region} | {start} to {end}")
     print(f"{headers[0]:<16} {headers[1]:>16} {headers[2]:>16} "
           f"{headers[3]:>14} {headers[4]:>12}")
 
@@ -976,7 +1091,7 @@ def run_q4():
     right.set_title("Cumulative price change", loc="left")
     right.set_xlabel("Change over selected period (%)")
 
-    fig.suptitle(f"{region} | {start:%b %Y} to {end:%b %Y}", fontweight="bold")
+    fig.suptitle(f"{region} | {start} to {end}", fontweight="bold")
     fig.tight_layout()
     plt.show()
 
